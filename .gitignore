@@ -30,8 +30,15 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files — keep the example, ignore actual secrets
+.env
+.env.local
+.env*.local
+.env.production
+
+# WhatsApp Web.js auth + cache
+.wwebjs_auth/
+.wwebjs_cache/
 
 # vercel
 .vercel
