@@ -1,4 +1,5 @@
 import type { ScanEntry, SkippedEntry, ReportPayload, Priority } from './types';
+import { isColleague } from './analyzer';
 
 interface FormatInput {
   resolved: ScanEntry[];
@@ -18,6 +19,16 @@ function esc(str: string | null | undefined): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+function highlightMsg(raw: string | null | undefined, clientName?: string | null): string {
+  const text = (raw ?? '').replace('[客戶]', '[' + (clientName ?? '客戶') + ']');
+  return text.replace(/\[([^\]]+)\]/g, (_match, name: string) => {
+    const isAgent = isColleague(name);
+    const bg = isAgent ? '#e3f2fd' : '#fff3e0';
+    const color = isAgent ? '#1565c0' : '#e65100';
+    return '<span style="background:' + bg + ';color:' + color + ';padding:1px 5px;border-radius:3px;font-weight:600;white-space:nowrap">[' + esc(name) + ']</span>';
+  });
 }
 
 function statCard(label: string, value: number, color: string): string {
@@ -81,8 +92,7 @@ export function formatReport({
       '   優先級        : ' + r.priority + '\n' +
       '   時間          : ' + r.timestamp.toLocaleTimeString('zh-HK') + '\n' +
       '   事件摘要      : ' + r.clientSummary + '\n' +
-      '   最後訊息      : ' + r.messageContent + '\n' +
-      '   待處理事項    : ' + (r.reason || r.clientSummary)
+      '   最後訊息      : ' + r.messageContent
   );
 
   const textFinishedRows = resolved.map(
@@ -134,8 +144,7 @@ export function formatReport({
         '<td style="' + TD + '">' + priorityBadge(r.priority) + (r.needsReview ? '<br>' + reviewBadge() : '') + '</td>' +
         '<td style="' + TD + '"><strong>' + esc(r.groupName) + '</strong></td>' +
         '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.clientSummary) + '</td>' +
-        '<td style="' + TD + ';min-width:220px">' + esc((r.messageContent ?? '').replace('[客戶]', '[' + (r.senderName ?? '客戶') + ']')) + '</td>' +
-        '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.reason || r.clientSummary) + '</td>' +
+        '<td style="' + TD + ';min-width:220px">' + highlightMsg(r.messageContent, r.senderName) + '</td>' +
         '<td style="' + TD + ';white-space:nowrap">' + r.timestamp.toLocaleTimeString('zh-HK') + '</td>' +
         '<td style="' + TD + ';white-space:nowrap"><span style="background:#c62828;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">待跟進</span></td>' +
         '</tr>'
@@ -153,7 +162,6 @@ export function formatReport({
         '<th style="' + TH + '">群組</th>' +
         '<th style="' + TH + ';min-width:180px">事件摘要</th>' +
         '<th style="' + TH + ';min-width:220px">最後訊息</th>' +
-        '<th style="' + TH + ';min-width:180px">待處理事項</th>' +
         '<th style="' + TH + '">時間</th>' +
         '<th style="' + TH + '">狀態</th>' +
         '</tr></thead><tbody>' + pendingRows + '</tbody></table></div>';

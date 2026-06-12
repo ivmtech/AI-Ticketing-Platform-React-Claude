@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  basePath: "/ticketing",
   // Prevent Next.js from bundling native/CommonJS heavy packages — let Node resolve them at runtime
   serverExternalPackages: [
     "whatsapp-web.js",
