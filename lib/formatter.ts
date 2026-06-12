@@ -48,12 +48,15 @@ export function formatReport({
   totalGroups,
 }: FormatInput): ReportPayload {
   const now = new Date();
-  const dateStr = now.toLocaleDateString('zh-HK', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
+  const dateStr =
+    now.toLocaleDateString('zh-HK', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    }) +
+    ' ' +
+    now.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   const priorityOrder: Record<Priority, number> = { '高': 0, '中': 1, '低': 2 };
   const sortedPending = [...unresolved].sort((a, b) => {
@@ -137,10 +140,9 @@ export function formatReport({
         '<td style="' + TD + '">' + (i + 1) + '</td>' +
         '<td style="' + TD + '">' + priorityBadge(r.priority) + (r.needsReview ? '<br>' + reviewBadge() : '') + '</td>' +
         '<td style="' + TD + '"><strong>' + esc(r.groupName) + '</strong></td>' +
-        '<td style="' + TD + '">' + (r.messageContent?.startsWith('[同事]') ? '—' : esc(r.senderName) + '<br><span style="color:#888;font-size:12px">' + esc(r.senderNumber) + '</span>') + '</td>' +
-        '<td style="' + TD + ';color:#555">' + esc(r.clientSummary) + '</td>' +
-        '<td style="' + TD + '">' + esc(r.messageContent) + '</td>' +
-        '<td style="' + TD + ';color:#555">' + esc(r.reason || r.clientSummary) + '</td>' +
+        '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.clientSummary) + '</td>' +
+        '<td style="' + TD + ';min-width:220px">' + esc((r.messageContent ?? '').replace('[客戶]', '[' + (r.senderName ?? '客戶') + ']')) + '</td>' +
+        '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.reason || r.clientSummary) + '</td>' +
         '<td style="' + TD + ';white-space:nowrap">' + r.timestamp.toLocaleTimeString('zh-HK') + '</td>' +
         '<td style="' + TD + ';white-space:nowrap"><span style="background:#c62828;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">待跟進</span></td>' +
         '</tr>'
@@ -156,10 +158,9 @@ export function formatReport({
         '<th style="' + TH + '">#</th>' +
         '<th style="' + TH + '">優先級</th>' +
         '<th style="' + TH + '">群組</th>' +
-        '<th style="' + TH + '">客戶</th>' +
-        '<th style="' + TH + '">事件摘要</th>' +
-        '<th style="' + TH + '">最後訊息</th>' +
-        '<th style="' + TH + '">待處理事項</th>' +
+        '<th style="' + TH + ';min-width:180px">事件摘要</th>' +
+        '<th style="' + TH + ';min-width:220px">最後訊息</th>' +
+        '<th style="' + TH + ';min-width:180px">待處理事項</th>' +
         '<th style="' + TH + '">時間</th>' +
         '<th style="' + TH + '">狀態</th>' +
         '</tr></thead><tbody>' + pendingRows + '</tbody></table></div>';
@@ -170,8 +171,7 @@ export function formatReport({
         '<tr style="background:' + (i % 2 === 0 ? '#ffffff' : '#f7f7f7') + '">' +
         '<td style="' + TD + '">' + (i + 1) + '</td>' +
         '<td style="' + TD + '"><strong>' + esc(r.groupName) + '</strong></td>' +
-        '<td style="' + TD + '">' + (r.messageContent?.startsWith('[同事]') ? '—' : esc(r.senderName || '—')) + '</td>' +
-        '<td style="' + TD + ';color:#555">' + esc(r.clientSummary) + '</td>' +
+        '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.clientSummary) + '</td>' +
         '<td style="' + TD + ';white-space:nowrap">' + (r.timestamp ? r.timestamp.toLocaleTimeString('zh-HK') : '—') + '</td>' +
         '<td style="' + TD + ';white-space:nowrap"><span style="background:#2e7d32;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">已完成</span></td>' +
         '</tr>'
@@ -186,8 +186,7 @@ export function formatReport({
         '<thead><tr style="background:#f0f0f0">' +
         '<th style="' + TH + '">#</th>' +
         '<th style="' + TH + '">群組</th>' +
-        '<th style="' + TH + '">客戶</th>' +
-        '<th style="' + TH + '">事件摘要</th>' +
+        '<th style="' + TH + ';min-width:180px">事件摘要</th>' +
         '<th style="' + TH + '">時間</th>' +
         '<th style="' + TH + '">狀態</th>' +
         '</tr></thead><tbody>' + finishedRows + '</tbody></table></div>';
@@ -215,7 +214,7 @@ export function formatReport({
         '</tr></thead><tbody>' + skippedRows + '</tbody></table></div></details>';
 
   const html =
-    '<!DOCTYPE html><html><body style="font-family:\'Microsoft JhengHei\',\'PingFang HK\',Arial,sans-serif;max-width:980px;margin:0 auto;padding:20px;color:#333">' +
+    '<!DOCTYPE html><html lang="zh-HK"><body style="font-family:\'Microsoft JhengHei\',\'PingFang HK\',\'Noto Sans TC\',Arial,sans-serif;max-width:980px;margin:0 auto;padding:20px;color:#333">' +
     '<h2 style="margin-bottom:4px">WhatsApp 群組跟進報告</h2>' +
     '<p style="color:#666;margin-top:0">' + dateStr + '</p>' +
     truncatedBanner + highBanner + reviewBanner + statBlock + pendingSection + finishedSection + skippedSection +

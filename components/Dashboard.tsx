@@ -6,6 +6,7 @@ interface ScanProgress { current: number; total: number; }
 interface LastResult { resolved: number; unresolved: number; skipped: number; }
 interface StatusData {
   isRunning: boolean;
+  whatsAppReady: boolean;
   lastRunAt: string | null;
   nextRunAt: string | null;
   lastResult: LastResult | null;
@@ -116,6 +117,7 @@ export default function Dashboard() {
   }
 
   const isRunning = status?.isRunning ?? false;
+  const whatsAppReady = status?.whatsAppReady ?? false;
   const progress = status?.progress ?? { current: 0, total: 0 };
 
   return (
@@ -124,7 +126,7 @@ export default function Dashboard() {
       <div className="w-[440px] min-w-[440px] h-full overflow-y-auto border-r border-[#374151] px-5 py-6 flex flex-col gap-4">
         <div>
           <h1 className="text-xl font-bold">WhatsApp Group Monitor</h1>
-          <p className="text-[#9ca3af] text-xs mt-0.5">Dashboard auto-refreshes every 3s</p>
+          <p className="text-[#9ca3af] text-xs mt-0.5">Dashboard auto-refreshes every 90s</p>
         </div>
 
         {/* Status / Last run / Next scheduled */}
@@ -169,10 +171,10 @@ export default function Dashboard() {
         {/* Run Now button */}
         <button
           onClick={handleRunNow}
-          disabled={isRunning}
+          disabled={isRunning || !whatsAppReady}
           className="w-full bg-[#3b82f6] hover:bg-[#2563eb] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-2.5 text-[0.95rem] transition-colors"
         >
-          {isRunning ? 'Running...' : runBtnLabel}
+          {isRunning ? 'Running...' : !whatsAppReady ? 'Waiting for WhatsApp...' : runBtnLabel}
         </button>
 
         {/* Email recipients */}
