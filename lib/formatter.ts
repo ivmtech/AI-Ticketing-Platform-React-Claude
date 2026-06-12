@@ -115,15 +115,8 @@ export function formatReport({
     ? '<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:13px">⚠ <strong>部分掃描：</strong>於時間上限前已檢查 ' + scannedGroups + ' / ' + totalGroups + ' 個群組，請再次執行以完成餘下部分。</div>'
     : '';
 
-  const highCount = sortedPending.filter((r) => r.priority === '高').length;
-  const highBanner = highCount > 0
-    ? '<div style="background:#ffe5e5;border:1px solid #c62828;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:14px;color:#c62828">🔥 <strong>' + highCount + ' 宗高優先級事件</strong>，請立即跟進。</div>'
-    : '';
-
-  const reviewCount = sortedPending.filter((r) => r.needsReview).length;
-  const reviewBanner = reviewCount > 0
-    ? '<div style="background:#fff8e1;border:1px solid #f9a825;border-radius:6px;padding:10px 16px;margin-bottom:16px;font-size:13px;color:#6d4c00">📋 <strong>' + reviewCount + ' 宗事件需人手覆核</strong>（AI 信心不足或分析失敗）。</div>'
-    : '';
+  const highBanner = '';
+  const reviewBanner = '';
 
   const statBlock =
     '<div style="display:flex;gap:16px;margin:16px 0;flex-wrap:wrap">' +

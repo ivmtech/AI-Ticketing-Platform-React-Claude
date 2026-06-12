@@ -22,11 +22,15 @@ export function isWhatsAppReady(): boolean {
   return globalThis.__whatsappReady === true;
 }
 
-function nextHourBoundary(): Date {
+function nextScheduledRun(): Date {
   const d = new Date();
-  d.setMinutes(0, 0, 0);
-  d.setHours(d.getHours() + 1);
-  return d;
+  const h = d.getHours() * 60 + d.getMinutes();
+  const next = h < 9 * 60 ? 9 : h < 17 * 60 ? 17 : 9;
+  const result = new Date(d);
+  result.setMinutes(0, 0, 0);
+  result.setHours(next);
+  if (next <= d.getHours()) result.setDate(result.getDate() + 1);
+  return result;
 }
 
 // Capture all console output into the dashboard activity log
@@ -103,7 +107,7 @@ export async function runScan(): Promise<void> {
 
   state.isRunning = false;
   state.progress = { current: 0, total: 0 };
-  state.nextRunAt = nextHourBoundary().toISOString();
+  state.nextRunAt = nextScheduledRun().toISOString();
 }
 
 export async function bootstrap(): Promise<void> {
@@ -143,9 +147,9 @@ export async function bootstrap(): Promise<void> {
     console.log('WhatsApp client ready.\n');
 
     const tz = process.env.TZ ?? 'Asia/Hong_Kong';
-    const schedule = process.env.CRON_SCHEDULE ?? '0 * * * *';
+    const schedule = process.env.CRON_SCHEDULE ?? '0 9,17 * * *';
 
-    state.nextRunAt = nextHourBoundary().toISOString();
+    state.nextRunAt = nextScheduledRun().toISOString();
 
     console.log(`Scheduler active. Cron: "${schedule}" (${tz})`);
 
