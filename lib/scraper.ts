@@ -43,7 +43,7 @@ async function enrichMessages(client: Client, messages: Message[]): Promise<Enri
   const needsLookup = [
     ...new Set(
       messages
-        .filter((m) => !m.fromMe && !(m._data as { notifyName?: string })?.notifyName && m.author)
+        .filter((m) => !(m._data as { notifyName?: string })?.notifyName && m.author)
         .map((m) => m.author as string)
     ),
   ];
@@ -56,16 +56,14 @@ async function enrichMessages(client: Client, messages: Message[]): Promise<Enri
   );
 
   return messages.map((msg) => ({
-    fromMe: msg.fromMe,
     body: msg.body,
     timestamp: msg.timestamp,
     author: msg.author,
-    senderName: msg.fromMe
-      ? 'ME'
-      : (msg._data as { notifyName?: string })?.notifyName ||
-        (msg.author ? nameMap[msg.author] ?? null : null) ||
-        (msg.author ? msg.author.split('@')[0] : 'Unknown') ||
-        'Unknown',
+    senderName:
+      (msg._data as { notifyName?: string })?.notifyName ||
+      (msg.author ? nameMap[msg.author] ?? null : null) ||
+      (msg.author ? msg.author.split('@')[0] : 'Unknown') ||
+      'Unknown',
   }));
 }
 
@@ -125,10 +123,10 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
 
         const lastRawClient = rawClientMsgs[rawClientMsgs.length - 1];
         const lastRawMsg = recent[recent.length - 1];
-        const lastRawSenderName = (lastRawMsg && !lastRawMsg.fromMe)
+        const lastRawSenderName = lastRawMsg
           ? (lastRawMsg._data as { notifyName?: string })?.notifyName ?? null
           : null;
-        const lastMsgIsAgent = !lastRawMsg || lastRawMsg.fromMe || isColleague(lastRawSenderName);
+        const lastMsgIsAgent = !lastRawMsg || isColleague(lastRawSenderName);
         const lastMsgFromClient = !lastMsgIsAgent;
         const unresolvedKw = matchesKeyword(lastRawClient.body, UNRESOLVED_KEYWORDS);
         const highKw = matchesKeyword(lastRawClient.body, HIGH_PRIORITY_KEYWORDS);
@@ -162,7 +160,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
 
         if (resolvedKw && lastRawMsg) {
           const elapsed = ((Date.now() - scanStart) / 1000).toFixed(0);
-          const colName = lastRawMsg.fromMe ? 'ME' : (lastRawSenderName ?? 'ME');
+          const colName = lastRawSenderName ?? 'Unknown';
           console.log('  [' + elapsed + 's] Colleague resolved "' + group.name + '" ("' + colName + '": "' + resolvedKw + '") — skipping Claude');
 
           const body = lastRawClient.body ?? '';
@@ -175,7 +173,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
             groupName: group.name,
             senderName: senderName ?? 'Unknown',
             senderNumber: lastRawClient.author ? lastRawClient.author.split('@')[0] : 'Unknown',
-            messageContent: lastRawMsg.body ? '[同事] ' + lastRawMsg.body : '[Non-text message]',
+            messageContent: lastRawMsg.body ? '[' + colName + '] ' + lastRawMsg.body : '[Non-text message]',
             timestamp: new Date(lastRawClient.timestamp * 1000),
             clientSummary: body.length > 50 ? body.slice(0, 50) + '…' : body,
             reason: '同事「' + colName + '」以「' + resolvedKw + '」確認完成',
@@ -215,9 +213,12 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
 
       const lastOverall = analysis.lastOverallMsg;
       const lastBody = (lastOverall?.body) || (lc?.body) || '';
-      const isLastAgent = lastOverall && (lastOverall.fromMe || isColleague(lastOverall.senderName));
+      const isLastAgent = lastOverall && isColleague(lastOverall.senderName);
+      const lastSenderLabel = isLastAgent && lastOverall
+        ? (lastOverall.senderName ?? 'Unknown')
+        : '客戶';
       const lastMsgContent = lastBody
-        ? (isLastAgent ? '[同事] ' : '[客戶] ') + lastBody
+        ? '[' + lastSenderLabel + '] ' + lastBody
         : '[Non-text message]';
 
       const entry: ScanEntry = {

@@ -58,7 +58,6 @@ export interface AppState {
 }
 
 export interface EnrichedMessage {
-  fromMe: boolean;
   body: string;
   timestamp: number;
   author: string | undefined;

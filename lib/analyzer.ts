@@ -66,7 +66,7 @@ export function isColleague(name: string | null | undefined): boolean {
 }
 
 function isAgentMsg(msg: EnrichedMessage): boolean {
-  return msg.fromMe || isColleague(msg.senderName);
+  return isColleague(msg.senderName);
 }
 
 export function matchesKeyword(text: string | null | undefined, keywords: string[]): string | null {
@@ -84,7 +84,7 @@ function truncate(s: string | null | undefined, n: number): string {
 
 function buildPrompt(groupName: string, transcript: string): string {
   return [
-    'You are analyzing a WhatsApp group conversation to determine if a client\'s issue or question has been resolved by the support agent (labeled "ME").',
+    'You are analyzing a WhatsApp group conversation to determine if a client\'s issue or question has been resolved by a support colleague.',
     '',
     'Group: ' + groupName,
     '',
@@ -92,7 +92,7 @@ function buildPrompt(groupName: string, transcript: string): string {
     transcript,
     '',
     'Determine:',
-    '1. resolved (boolean) - true ONLY if ME gave a satisfactory final answer OR the client acknowledged the solution. If the LAST message is from the client and contains a question/complaint, resolved must be false.',
+    '1. resolved (boolean) - true ONLY if a support colleague gave a satisfactory final answer OR the client acknowledged the solution. If the LAST message is from the client and contains a question/complaint, resolved must be false.',
     '2. clientSummary - one short sentence IN TRADITIONAL CHINESE (Hong Kong style) describing the client\'s main issue/request',
     '3. reason - brief TRADITIONAL CHINESE explanation of why you ruled resolved/not',
     '4. priority - exactly one of "高" (urgent / system down / blocking business / angry client / explicit urgency words), "中" (normal request needing follow-up within the day), or "低" (informational / casual / non-blocking)',
@@ -115,10 +115,10 @@ function buildBatchPrompt(prepared: Array<{ groupName: string; transcript: strin
     .join('\n\n');
 
   return [
-    'You are analyzing ' + prepared.length + ' WhatsApp group conversation(s) to determine if each client\'s issue has been resolved by the support agent (labeled "ME").',
+    'You are analyzing ' + prepared.length + ' WhatsApp group conversation(s) to determine if each client\'s issue has been resolved by a support colleague.',
     '',
     'For each group, determine:',
-    '1. resolved (boolean) - true ONLY if ME gave a satisfactory final answer OR the client acknowledged the solution. If the LAST message is from the client and contains a question/complaint, resolved must be false.',
+    '1. resolved (boolean) - true ONLY if a support colleague gave a satisfactory final answer OR the client acknowledged the solution. If the LAST message is from the client and contains a question/complaint, resolved must be false.',
     '2. clientSummary - one short sentence IN TRADITIONAL CHINESE (Hong Kong style) describing the client\'s main issue/request',
     '3. reason - brief TRADITIONAL CHINESE explanation of your verdict',
     '4. priority - exactly one of "高" (urgent/system down/blocking business/angry client/explicit urgency), "中" (normal request needing follow-up within the day), or "低" (informational/casual/non-blocking)',
@@ -174,7 +174,7 @@ async function _analyzeBatchChunk(
           hour: '2-digit',
           minute: '2-digit',
         });
-        const sender = isAgentMsg(m) ? 'ME' : m.senderName || 'CLIENT';
+        const sender = m.senderName || (isAgentMsg(m) ? 'COLLEAGUE' : 'CLIENT');
         return '[' + time + '] ' + sender + ': ' + (m.body || '[media/sticker]');
       })
       .join('\n');
