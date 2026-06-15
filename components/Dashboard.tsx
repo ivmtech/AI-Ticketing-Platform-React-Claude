@@ -78,7 +78,7 @@ export default function Dashboard() {
   // Poll status every 3 s
   useEffect(() => {
     refresh();
-    const id = setInterval(refresh, 3000);
+    const id = setInterval(refresh, 90000);
     return () => clearInterval(id);
   }, [refresh]);
 

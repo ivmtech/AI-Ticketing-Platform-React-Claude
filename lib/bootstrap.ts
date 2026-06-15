@@ -100,7 +100,15 @@ export async function runScan(): Promise<void> {
       await sendEmail(report);
     }
   } catch (err) {
-    console.error('Scan error:', (err as Error).message);
+    const msg = (err as Error).message ?? '';
+    console.error('Scan error:', msg);
+    // Puppeteer page/frame was torn down (WA page reload or session refresh).
+    // Reset the ready flag so subsequent scans bail out cleanly until the
+    // 'ready' event fires again after the client reconnects.
+    if (/detached Frame|Session closed|Target closed/i.test(msg)) {
+      globalThis.__whatsappReady = false;
+      console.warn('WhatsApp page lost — waiting for client to reconnect...');
+    }
   }
 
   console.log(`Scan finished in ${((Date.now() - start) / 1000).toFixed(1)}s\n`);
@@ -142,25 +150,28 @@ export async function bootstrap(): Promise<void> {
     console.error('WhatsApp auth failed:', msg);
   });
 
+  let cronStarted = false;
+
   client.on('ready', () => {
     globalThis.__whatsappReady = true;
     console.log('WhatsApp client ready.\n');
 
-    const tz = process.env.TZ ?? 'Asia/Hong_Kong';
-    const schedule = process.env.CRON_SCHEDULE ?? '0 9,17 * * *';
-
     state.nextRunAt = nextScheduledRun().toISOString();
 
-    console.log(`Scheduler active. Cron: "${schedule}" (${tz})`);
-
-    cron.schedule(
-      schedule,
-      () => {
-        console.log('Cron fired — starting scheduled scan...');
-        runScan();
-      },
-      { timezone: tz }
-    );
+    if (!cronStarted) {
+      cronStarted = true;
+      const tz = process.env.TZ ?? 'Asia/Hong_Kong';
+      const schedule = process.env.CRON_SCHEDULE ?? '0 9,17 * * *';
+      console.log(`Scheduler active. Cron: "${schedule}" (${tz})`);
+      cron.schedule(
+        schedule,
+        () => {
+          console.log('Cron fired — starting scheduled scan...');
+          runScan();
+        },
+        { timezone: tz }
+      );
+    }
   });
 
   client.on('disconnected', (reason: string) => {
