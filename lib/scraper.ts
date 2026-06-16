@@ -75,7 +75,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
   const now = new Date();
   const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
 
-  const MSG_LIMIT = parseInt(process.env.MESSAGE_HISTORY_LIMIT ?? '5');
+  const MSG_LIMIT = parseInt(process.env.MESSAGE_HISTORY_LIMIT ?? '10');
   const CONCURRENCY = Math.max(1, parseInt(process.env.SCAN_CONCURRENCY ?? '5'));
 
   const chats: Chat[] = await client.getChats();

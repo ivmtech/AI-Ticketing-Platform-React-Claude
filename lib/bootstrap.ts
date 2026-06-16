@@ -128,12 +128,28 @@ export async function bootstrap(): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const qrcode = require('qrcode-terminal') as { generate: (text: string, opts?: { small?: boolean }) => void };
 
+  // Resolve Chrome executable: env override → system Chrome → puppeteer default
+  function resolveChromePath(): string | undefined {
+    if (process.env.PUPPETEER_EXECUTABLE_PATH) return process.env.PUPPETEER_EXECUTABLE_PATH;
+    const candidates = [
+      'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+      'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+      `C:\\Users\\${process.env.USERNAME}\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe`,
+    ];
+    const fs = require('fs') as typeof import('fs');
+    return candidates.find((p) => fs.existsSync(p));
+  }
+
+  const executablePath = resolveChromePath();
+  if (executablePath) console.log(`Using Chrome at: ${executablePath}`);
+
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
     puppeteer: {
       headless: true,
       protocolTimeout: 600000,
       args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+      ...(executablePath ? { executablePath } : {}),
     },
   });
 
