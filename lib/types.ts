@@ -55,6 +55,7 @@ export interface AppState {
   lastReportHtml: string | null;
   logs: string[];
   reportEmails: string[];
+  scanMissedDueToDisconnect: boolean;
 }
 
 export interface EnrichedMessage {

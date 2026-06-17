@@ -107,6 +107,7 @@ export async function runScan(): Promise<void> {
     // 'ready' event fires again after the client reconnects.
     if (/detached Frame|Session closed|Target closed/i.test(msg)) {
       globalThis.__whatsappReady = false;
+      state.scanMissedDueToDisconnect = true;
       console.warn('WhatsApp page lost — waiting for client to reconnect...');
     }
   }
@@ -187,6 +188,12 @@ export async function bootstrap(): Promise<void> {
         },
         { timezone: tz }
       );
+    } else if (state.scanMissedDueToDisconnect) {
+      // WhatsApp reconnected after a mid-scan disconnect — retry the missed scan
+      state.scanMissedDueToDisconnect = false;
+      console.log('WhatsApp reconnected — retrying missed scan...');
+      // Small delay to let WhatsApp finish its internal page reload
+      setTimeout(() => runScan(), 5000);
     }
   });
 

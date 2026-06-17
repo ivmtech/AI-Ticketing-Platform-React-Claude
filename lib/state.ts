@@ -17,6 +17,7 @@ function createInitialState(): AppState {
     reportEmails: process.env.REPORT_EMAIL
       ? process.env.REPORT_EMAIL.split(',').map((e) => e.trim()).filter(Boolean)
       : [],
+    scanMissedDueToDisconnect: false,
   };
 }
 

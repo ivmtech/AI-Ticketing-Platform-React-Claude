@@ -154,7 +154,7 @@ async function _analyzeBatchChunk(
   items: Array<{ groupName: string; messages: EnrichedMessage[] }>
 ): Promise<ClaudeAnalysisResult[]> {
   const model = process.env.CLAUDE_MODEL ?? 'claude-haiku-4-5-20251001';
-  const threshold = parseFloat(process.env.CONFIDENCE_THRESHOLD ?? '0.8');
+  const threshold = parseFloat(process.env.CONFIDENCE_THRESHOLD ?? '0.7');
 
   const prepared = items.map(({ groupName, messages }) => {
     const clientMessages = messages.filter((m) => !isAgentMsg(m) && m.body);
