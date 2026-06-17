@@ -23,13 +23,27 @@ export function isWhatsAppReady(): boolean {
 }
 
 function nextScheduledRun(): Date {
-  const d = new Date();
-  const h = d.getHours() * 60 + d.getMinutes();
-  const next = h < 9 * 60 ? 9 : h < 17 * 60 ? 17 : 9;
-  const result = new Date(d);
-  result.setMinutes(0, 0, 0);
-  result.setHours(next);
-  if (next <= d.getHours()) result.setDate(result.getDate() + 1);
+  const raw = process.env.CRON_SCHEDULE ?? '0 9,10,11,17 * * *;15,45 10 * * *';
+  const expressions = raw.split(';').map(s => s.trim()).filter(Boolean);
+
+  // Parse each "min hour * * *" expression into [hour, minute] pairs
+  const slots: Array<{ h: number; m: number }> = [];
+  for (const expr of expressions) {
+    const parts = expr.split(/\s+/);
+    if (parts.length < 2) continue;
+    const mins = parts[0].split(',').map(Number);
+    const hours = parts[1].split(',').map(Number);
+    for (const h of hours) for (const m of mins) slots.push({ h, m });
+  }
+  slots.sort((a, b) => a.h * 60 + a.m - (b.h * 60 + b.m));
+
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+
+  const next = slots.find(s => s.h * 60 + s.m > nowMins) ?? slots[0];
+  const result = new Date(now);
+  result.setHours(next.h, next.m, 0, 0);
+  if (next.h * 60 + next.m <= nowMins) result.setDate(result.getDate() + 1);
   return result;
 }
 
@@ -162,14 +176,37 @@ export async function bootstrap(): Promise<void> {
     qrcode.generate(qr, { small: true });
   });
 
-  client.on('authenticated', () => console.log('WhatsApp authenticated.'));
+  let readyWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+  function startReadyWatchdog() {
+    if (readyWatchdog) clearTimeout(readyWatchdog);
+    readyWatchdog = setTimeout(async () => {
+      console.warn('WhatsApp ready watchdog fired — client stuck after authenticated. Reinitializing...');
+      try { await client.destroy(); } catch { /* ignore */ }
+      client.initialize().catch((err: Error) => {
+        console.error('WhatsApp re-initialize() error:', err.message);
+      });
+    }, 3 * 60 * 1000); // 3 minutes
+  }
+
+  client.on('loading_screen', (percent: number) => {
+    console.log(`WhatsApp loading: ${percent}%`);
+  });
+
+  client.on('authenticated', () => {
+    console.log('WhatsApp authenticated. Waiting for page to finish loading...');
+    startReadyWatchdog();
+  });
+
   client.on('auth_failure', (msg: string) => {
+    if (readyWatchdog) { clearTimeout(readyWatchdog); readyWatchdog = null; }
     console.error('WhatsApp auth failed:', msg);
   });
 
   let cronStarted = false;
 
   client.on('ready', () => {
+    if (readyWatchdog) { clearTimeout(readyWatchdog); readyWatchdog = null; }
     globalThis.__whatsappReady = true;
     console.log('WhatsApp client ready.\n');
 
@@ -178,16 +215,18 @@ export async function bootstrap(): Promise<void> {
     if (!cronStarted) {
       cronStarted = true;
       const tz = process.env.TZ ?? 'Asia/Hong_Kong';
-      const schedule = process.env.CRON_SCHEDULE ?? '0 9,17 * * *';
-      console.log(`Scheduler active. Cron: "${schedule}" (${tz})`);
-      cron.schedule(
-        schedule,
-        () => {
-          console.log('Cron fired — starting scheduled scan...');
-          runScan();
-        },
-        { timezone: tz }
-      );
+      const schedules = (process.env.CRON_SCHEDULE ?? '0 9,10,11,17 * * *;15,45 10 * * *').split(';').map(s => s.trim()).filter(Boolean);
+      console.log(`Scheduler active. Cron: ${schedules.map(s => '"' + s + '"').join(', ')} (${tz})`);
+      for (const schedule of schedules) {
+        cron.schedule(
+          schedule,
+          () => {
+            console.log('Cron fired — starting scheduled scan...');
+            runScan();
+          },
+          { timezone: tz }
+        );
+      }
     } else if (state.scanMissedDueToDisconnect) {
       // WhatsApp reconnected after a mid-scan disconnect — retry the missed scan
       state.scanMissedDueToDisconnect = false;
@@ -198,6 +237,7 @@ export async function bootstrap(): Promise<void> {
   });
 
   client.on('disconnected', (reason: string) => {
+    if (readyWatchdog) { clearTimeout(readyWatchdog); readyWatchdog = null; }
     globalThis.__whatsappReady = false;
     console.warn('WhatsApp client disconnected:', reason);
   });
