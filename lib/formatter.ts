@@ -100,7 +100,8 @@ export function formatReport({
       (i + 1) + '. ' + r.groupName + '\n' +
       '   客戶          : ' + (r.senderName || '—') + '\n' +
       '   時間          : ' + (r.timestamp ? r.timestamp.toLocaleTimeString('zh-HK') : '—') + '\n' +
-      '   事件摘要      : ' + r.clientSummary
+      '   事件摘要      : ' + r.clientSummary + '\n' +
+      '   最後訊息      : ' + r.messageContent
   );
 
   const text = [
@@ -173,6 +174,7 @@ export function formatReport({
         '<td style="' + TD + '">' + (i + 1) + '</td>' +
         '<td style="' + TD + '"><strong>' + esc(r.groupName) + '</strong></td>' +
         '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.clientSummary) + '</td>' +
+        '<td style="' + TD + ';min-width:220px">' + highlightMsg(r.messageContent, r.senderName) + '</td>' +
         '<td style="' + TD + ';white-space:nowrap">' + (r.timestamp ? r.timestamp.toLocaleTimeString('zh-HK') : '—') + '</td>' +
         '<td style="' + TD + ';white-space:nowrap"><span style="background:#2e7d32;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">已完成</span></td>' +
         '</tr>'
@@ -183,11 +185,12 @@ export function formatReport({
     resolved.length === 0
       ? ''
       : '<h3 style="margin:32px 0 8px;color:#2e7d32">已完成群組（' + resolved.length + '）</h3>' +
-        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:700px">' +
+        '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">' +
         '<thead><tr style="background:#f0f0f0">' +
         '<th style="' + TH + '">#</th>' +
         '<th style="' + TH + '">群組</th>' +
         '<th style="' + TH + ';min-width:180px">事件摘要</th>' +
+        '<th style="' + TH + ';min-width:220px">最後訊息</th>' +
         '<th style="' + TH + '">時間</th>' +
         '<th style="' + TH + '">狀態</th>' +
         '</tr></thead><tbody>' + finishedRows + '</tbody></table></div>';

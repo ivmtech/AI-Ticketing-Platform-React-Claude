@@ -8,22 +8,6 @@ import { analyzeChatBatch, UNRESOLVED_KEYWORDS, HIGH_PRIORITY_KEYWORDS, RESOLVED
 
 const contactNameCache = new Map<string, string | null>();
 
-function resolveAssignee(groupName: string): string {
-  const fallback = process.env.DEFAULT_ASSIGNEE ?? '未指派';
-  const raw = process.env.ASSIGNEE_MAP;
-  if (!raw) return fallback;
-
-  try {
-    const map = JSON.parse(raw) as Record<string, string>;
-    const lower = groupName.toLowerCase();
-    for (const [keyword, assignee] of Object.entries(map)) {
-      if (lower.includes(keyword.toLowerCase())) return assignee;
-    }
-  } catch (err) {
-    console.warn('  ASSIGNEE_MAP is not valid JSON: ' + (err as Error).message);
-  }
-  return fallback;
-}
 
 async function resolveName(client: Client, authorId: string | undefined): Promise<string | null> {
   if (!authorId) return null;
@@ -153,7 +137,6 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
             priority: highKw ? '高' : '中',
             confidence: 0.95,
             needsReview: false,
-            assignedTo: resolveAssignee(group.name),
           });
           continue;
         }
@@ -180,7 +163,6 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
             priority: '低',
             confidence: 0.95,
             needsReview: false,
-            assignedTo: resolveAssignee(group.name),
           });
           continue;
         }
@@ -212,10 +194,11 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
       }
 
       const lastOverall = analysis.lastOverallMsg;
-      const lastBody = (lastOverall?.body) || (lc?.body) || '';
-      const isLastAgent = lastOverall && isColleague(lastOverall.senderName);
-      const lastSenderLabel = isLastAgent && lastOverall
-        ? (lastOverall.senderName ?? 'Unknown')
+      const useLastOverall = !!(lastOverall?.body);
+      const lastBody = useLastOverall ? (lastOverall!.body) : (lc?.body || '');
+      const isLastAgent = useLastOverall && isColleague(lastOverall!.senderName);
+      const lastSenderLabel = isLastAgent
+        ? (lastOverall!.senderName ?? 'Unknown')
         : '客戶';
       const lastMsgContent = lastBody
         ? '[' + lastSenderLabel + '] ' + lastBody
@@ -232,7 +215,6 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
         priority: analysis.priority ?? '中',
         confidence: analysis.confidence,
         needsReview: Boolean(analysis.needsReview),
-        assignedTo: resolveAssignee(groupName),
       };
 
       if (analysis.resolved) {

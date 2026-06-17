@@ -23,7 +23,7 @@ export function isWhatsAppReady(): boolean {
 }
 
 function nextScheduledRun(): Date {
-  const raw = process.env.CRON_SCHEDULE ?? '0 9,10,12,13,17 * * *';
+  const raw = process.env.CRON_SCHEDULE;
   const expressions = raw.split(';').map(s => s.trim()).filter(Boolean);
 
   // Parse each "min hour * * *" expression into [hour, minute] pairs
@@ -252,7 +252,7 @@ export async function bootstrap(): Promise<void> {
     if (!cronStarted) {
       cronStarted = true;
       const tz = process.env.TZ ?? 'Asia/Hong_Kong';
-      const schedules = (process.env.CRON_SCHEDULE ?? '0 9,10,12,13,17 * * *').split(';').map(s => s.trim()).filter(Boolean);
+      const schedules = process.env.CRON_SCHEDULE!.split(';').map(s => s.trim()).filter(Boolean);
       console.log(`Scheduler active. Cron: ${schedules.map(s => '"' + s + '"').join(', ')} (${tz})`);
       for (const schedule of schedules) {
         cron.schedule(

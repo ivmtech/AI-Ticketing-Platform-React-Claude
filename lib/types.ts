@@ -11,7 +11,6 @@ export interface ScanEntry {
   priority: Priority;
   confidence: number;
   needsReview: boolean;
-  assignedTo: string;
 }
 
 export interface SkippedEntry {
