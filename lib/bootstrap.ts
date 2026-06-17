@@ -23,7 +23,7 @@ export function isWhatsAppReady(): boolean {
 }
 
 function nextScheduledRun(): Date {
-  const raw = process.env.CRON_SCHEDULE ?? '0 9,10,11,17 * * *;15,45 10 * * *';
+  const raw = process.env.CRON_SCHEDULE ?? '0 9,10,12,13,17 * * *';
   const expressions = raw.split(';').map(s => s.trim()).filter(Boolean);
 
   // Parse each "min hour * * *" expression into [hour, minute] pairs
@@ -160,6 +160,13 @@ export async function bootstrap(): Promise<void> {
 
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
+    // Pin to a known-good WhatsApp Web version from the community archive.
+    // The live site frequently ships JS module renames that silently break
+    // the LoadUtils injection, preventing 'ready' from ever firing.
+    webVersionCache: {
+      type: 'remote',
+      remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/{version}.html',
+    },
     puppeteer: {
       headless: true,
       protocolTimeout: 600000,
@@ -196,6 +203,36 @@ export async function bootstrap(): Promise<void> {
   client.on('authenticated', () => {
     console.log('WhatsApp authenticated. Waiting for page to finish loading...');
     startReadyWatchdog();
+
+    // Diagnostic: 5 seconds after auth, check what the page state actually is
+    setTimeout(async () => {
+      if (isWhatsAppReady()) return; // already reached ready, no need
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const page = (client as any).pupPage;
+        if (!page) { console.warn('  [diag] pupPage not available'); return; }
+
+        const wwebjsDefined: boolean = await page.evaluate(
+          () => typeof (window as unknown as Record<string, unknown>).WWebJS !== 'undefined'
+        );
+        console.log(`  [diag] window.WWebJS defined: ${wwebjsDefined}`);
+
+        const socketState: string = await page.evaluate(() => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            return (window as any).require('WAWebSocketModel')?.Socket?.state ?? 'null';
+          } catch (e) {
+            return 'module-error: ' + (e as Error).message;
+          }
+        });
+        console.log(`  [diag] WAWebSocket state: ${socketState}`);
+
+        const pageUrl: string = page.url();
+        console.log(`  [diag] page URL: ${pageUrl}`);
+      } catch (e) {
+        console.warn('  [diag] check failed:', (e as Error).message);
+      }
+    }, 5000);
   });
 
   client.on('auth_failure', (msg: string) => {
@@ -215,7 +252,7 @@ export async function bootstrap(): Promise<void> {
     if (!cronStarted) {
       cronStarted = true;
       const tz = process.env.TZ ?? 'Asia/Hong_Kong';
-      const schedules = (process.env.CRON_SCHEDULE ?? '0 9,10,11,17 * * *;15,45 10 * * *').split(';').map(s => s.trim()).filter(Boolean);
+      const schedules = (process.env.CRON_SCHEDULE ?? '0 9,10,12,13,17 * * *').split(';').map(s => s.trim()).filter(Boolean);
       console.log(`Scheduler active. Cron: ${schedules.map(s => '"' + s + '"').join(', ')} (${tz})`);
       for (const schedule of schedules) {
         cron.schedule(
