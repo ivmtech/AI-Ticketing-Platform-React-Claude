@@ -91,6 +91,32 @@ export async function bootstrap(): Promise<void> {
   const executablePath = resolveChromePath();
   if (executablePath) console.log(`Using Chrome at: ${executablePath}`);
 
+  // A dev hot-reload / restart replaces the Node process without calling
+  // client.destroy(), orphaning the headless Chrome which keeps holding the
+  // profile's userDataDir lock. The next initialize() then fails with
+  // "The browser is already running for ...". Kill any such leftover Chrome
+  // (matched strictly by this project's .wwebjs_auth path so the user's own
+  // Chrome is never touched) before launching a fresh one.
+  function killStaleBrowsers(): void {
+    if (process.platform !== 'win32') return; // resolveChromePath is Windows-only anyway
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('path') as typeof import('path');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { execSync } = require('child_process') as typeof import('child_process');
+      const authDir = path.resolve('.wwebjs_auth');
+      const ps =
+        `Get-CimInstance Win32_Process | ` +
+        `Where-Object { $_.Name -eq 'chrome.exe' -and $_.CommandLine -like '*${authDir}*' } | ` +
+        `ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
+      execSync(`powershell -NoProfile -NonInteractive -Command "${ps}"`, { stdio: 'ignore', timeout: 15000 });
+      console.log('Cleared any stale WhatsApp Chrome processes before launch.');
+    } catch {
+      // best-effort; if it fails, initialize() will surface the original error
+    }
+  }
+  killStaleBrowsers();
+
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
     // Pin to a known-good WhatsApp Web version from the community archive.
@@ -103,7 +129,7 @@ export async function bootstrap(): Promise<void> {
     puppeteer: {
       headless: true,
       protocolTimeout: 600000,
-      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu', '--disable-quic'],
       ...(executablePath ? { executablePath } : {}),
     },
   });

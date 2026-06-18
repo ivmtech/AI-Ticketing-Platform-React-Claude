@@ -18,7 +18,7 @@ async function resolveName(client: Client, authorId: string | undefined): Promis
     contactNameCache.set(authorId, name);
     return name;
   } catch {
-    contactNameCache.set(authorId, null);
+    // Don't cache failures — retry on next scan
     return null;
   }
 }
@@ -39,7 +39,7 @@ async function enrichMessages(client: Client, messages: Message[]): Promise<Enri
     })
   );
 
-  const deviceName = process.env.WHATSAPP_DEVICE_NAME ?? '售賣機客戶服務';
+  const deviceName = process.env.WHATSAPP_DEVICE_NAME;
 
   return messages.map((msg) => ({
     body: msg.body,
@@ -48,7 +48,7 @@ async function enrichMessages(client: Client, messages: Message[]): Promise<Enri
     fromMe: msg.fromMe === true,
     senderName:
       msg.fromMe
-        ? deviceName
+        ? (deviceName ?? 'Me')
         : ((msg._data as { notifyName?: string })?.notifyName ||
            (msg.author ? nameMap[msg.author] ?? null : null) ||
            (msg.author ? msg.author.split('@')[0] : 'Unknown') ||
@@ -149,8 +149,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
 
         if (resolvedKw && lastRawMsg) {
           const elapsed = ((Date.now() - scanStart) / 1000).toFixed(0);
-          const deviceName = process.env.WHATSAPP_DEVICE_NAME ?? '售賣機客戶服務';
-          const colName = lastMsgIsFromMe ? deviceName : (lastRawSenderName ?? 'Unknown');
+          const colName = lastMsgIsFromMe ? (process.env.WHATSAPP_DEVICE_NAME ?? 'Me') : (lastRawSenderName ?? 'Unknown');
           console.log('  [' + elapsed + 's] Colleague resolved "' + group.name + '" ("' + colName + '": "' + resolvedKw + '") — skipping Claude');
 
           const body = lastRawClient.body ?? '';
