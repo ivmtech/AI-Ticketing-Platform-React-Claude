@@ -39,15 +39,20 @@ async function enrichMessages(client: Client, messages: Message[]): Promise<Enri
     })
   );
 
+  const deviceName = process.env.WHATSAPP_DEVICE_NAME ?? '售賣機客戶服務';
+
   return messages.map((msg) => ({
     body: msg.body,
     timestamp: msg.timestamp,
     author: msg.author,
+    fromMe: msg.fromMe === true,
     senderName:
-      (msg._data as { notifyName?: string })?.notifyName ||
-      (msg.author ? nameMap[msg.author] ?? null : null) ||
-      (msg.author ? msg.author.split('@')[0] : 'Unknown') ||
-      'Unknown',
+      msg.fromMe
+        ? deviceName
+        : ((msg._data as { notifyName?: string })?.notifyName ||
+           (msg.author ? nameMap[msg.author] ?? null : null) ||
+           (msg.author ? msg.author.split('@')[0] : 'Unknown') ||
+           'Unknown'),
   }));
 }
 
@@ -110,7 +115,8 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
         const lastRawSenderName = lastRawMsg
           ? (lastRawMsg._data as { notifyName?: string })?.notifyName ?? null
           : null;
-        const lastMsgIsAgent = !lastRawMsg || isColleague(lastRawSenderName);
+        const lastMsgIsFromMe = lastRawMsg?.fromMe === true;
+        const lastMsgIsAgent = !lastRawMsg || lastMsgIsFromMe || isColleague(lastRawSenderName);
         const lastMsgFromClient = !lastMsgIsAgent;
         const unresolvedKw = matchesKeyword(lastRawClient.body, UNRESOLVED_KEYWORDS);
         const highKw = matchesKeyword(lastRawClient.body, HIGH_PRIORITY_KEYWORDS);
@@ -143,7 +149,8 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
 
         if (resolvedKw && lastRawMsg) {
           const elapsed = ((Date.now() - scanStart) / 1000).toFixed(0);
-          const colName = lastRawSenderName ?? 'Unknown';
+          const deviceName = process.env.WHATSAPP_DEVICE_NAME ?? '售賣機客戶服務';
+          const colName = lastMsgIsFromMe ? deviceName : (lastRawSenderName ?? 'Unknown');
           console.log('  [' + elapsed + 's] Colleague resolved "' + group.name + '" ("' + colName + '": "' + resolvedKw + '") — skipping Claude');
 
           const body = lastRawClient.body ?? '';
@@ -152,16 +159,17 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
             (await resolveName(client, lastRawClient.author)) ||
             (lastRawClient.author ? lastRawClient.author.split('@')[0] : 'Unknown');
 
+          const msgBody = lastRawMsg.body ?? '';
           resolved.push({
             groupName: group.name,
             senderName: senderName ?? 'Unknown',
             senderNumber: lastRawClient.author ? lastRawClient.author.split('@')[0] : 'Unknown',
-            messageContent: lastRawMsg.body ? '[' + colName + '] ' + lastRawMsg.body : '[Non-text message]',
+            messageContent: msgBody ? '[' + colName + '] ' + msgBody : '[Non-text message]',
             timestamp: new Date(lastRawClient.timestamp * 1000),
             clientSummary: body.length > 50 ? body.slice(0, 50) + '…' : body,
             reason: '同事「' + colName + '」以「' + resolvedKw + '」確認完成',
             priority: '低',
-            confidence: 0.95,
+            confidence: 0.85,
             needsReview: false,
           });
           continue;

@@ -1,9 +1,35 @@
 import { Client, LocalAuth } from 'whatsapp-web.js';
 import cron from 'node-cron';
 import state from './state';
-import { scrapeGroups } from './scraper';
-import { formatReport } from './formatter';
-import { sendEmail } from './mailer';
+
+// Puppeteer 20.6+ throws "Function already exists" when exposeFunction is
+// called for a name already registered (e.g. after a page reload). The
+// whatsapp-web.js helper doesn't handle this, causing attachEventListeners()
+// to throw silently and 'ready' to never fire. Patch it here at module load
+// time using Node.js module cache — all subsequent require() calls get the
+// fixed version.
+(function patchExposeFunctionIfAbsent() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const puppeteerUtils = require('whatsapp-web.js/src/util/Puppeteer') as {
+    exposeFunctionIfAbsent: (page: import('puppeteer').Page, name: string, fn: (...args: unknown[]) => unknown) => Promise<void>;
+  };
+  puppeteerUtils.exposeFunctionIfAbsent = async (page, name, fn) => {
+    const exist: boolean = await page.evaluate((n: string) => !!(window as unknown as Record<string, unknown>)[n], name);
+    if (exist) return;
+    try {
+      await page.exposeFunction(name, fn);
+    } catch (err) {
+      if ((err as Error).message?.toLowerCase().includes('already')) {
+        // Function registered in Puppeteer's internal map but not on window —
+        // remove it first then re-expose with the new handler.
+        try { await (page as unknown as { removeExposedFunction: (n: string) => Promise<void> }).removeExposedFunction(name); } catch { /* ignore */ }
+        await page.exposeFunction(name, fn);
+      } else {
+        throw err;
+      }
+    }
+  };
+})();
 
 declare global {
   // eslint-disable-next-line no-var
@@ -22,31 +48,6 @@ export function isWhatsAppReady(): boolean {
   return globalThis.__whatsappReady === true;
 }
 
-function nextScheduledRun(): Date {
-  const raw = process.env.CRON_SCHEDULE;
-  const expressions = raw.split(';').map(s => s.trim()).filter(Boolean);
-
-  // Parse each "min hour * * *" expression into [hour, minute] pairs
-  const slots: Array<{ h: number; m: number }> = [];
-  for (const expr of expressions) {
-    const parts = expr.split(/\s+/);
-    if (parts.length < 2) continue;
-    const mins = parts[0].split(',').map(Number);
-    const hours = parts[1].split(',').map(Number);
-    for (const h of hours) for (const m of mins) slots.push({ h, m });
-  }
-  slots.sort((a, b) => a.h * 60 + a.m - (b.h * 60 + b.m));
-
-  const now = new Date();
-  const nowMins = now.getHours() * 60 + now.getMinutes();
-
-  const next = slots.find(s => s.h * 60 + s.m > nowMins) ?? slots[0];
-  const result = new Date(now);
-  result.setHours(next.h, next.m, 0, 0);
-  if (next.h * 60 + next.m <= nowMins) result.setDate(result.getDate() + 1);
-  return result;
-}
-
 // Capture all console output into the dashboard activity log
 function patchConsole() {
   const _log = console.log.bind(console);
@@ -63,74 +64,6 @@ function patchConsole() {
   console.log = (...a) => capture(_log, ...a);
   console.error = (...a) => capture(_error, ...a);
   console.warn = (...a) => capture(_warn, ...a);
-}
-
-export async function runScan(): Promise<void> {
-  if (state.isRunning) return;
-  const client = getWhatsAppClient();
-  if (!client || !isWhatsAppReady()) {
-    console.warn('runScan called but WhatsApp client is not ready yet.');
-    return;
-  }
-
-  state.isRunning = true;
-  state.progress = { current: 0, total: 0 };
-  state.lastRunAt = new Date().toISOString();
-
-  const start = Date.now();
-  console.log(`[${new Date().toLocaleString()}] Scan started`);
-
-  try {
-    const results = await scrapeGroups(client, {
-      onProgress: (current, total) => {
-        state.progress = { current, total };
-      },
-    });
-    const { resolved, unresolved, skipped = [] } = results;
-    const total = resolved.length + unresolved.length;
-
-    state.lastResult = {
-      resolved: resolved.length,
-      unresolved: unresolved.length,
-      skipped: skipped.length,
-    };
-
-    if (total === 0) {
-      console.log('No groups with client activity found. Nothing to send.');
-    } else {
-      console.log(`Scan complete — Total: ${total} | Finished: ${resolved.length} | To Do: ${unresolved.length}`);
-
-      if (unresolved.length > 0) {
-        console.log('Pending groups:');
-        unresolved.forEach((r, i) =>
-          console.log(`  ${i + 1}. ${r.groupName} — ${r.senderName} at ${r.timestamp.toLocaleTimeString()}`)
-        );
-      } else {
-        console.log('All client issues resolved!');
-      }
-
-      const report = formatReport(results);
-      state.lastReportHtml = report.html;
-      await sendEmail(report);
-    }
-  } catch (err) {
-    const msg = (err as Error).message ?? '';
-    console.error('Scan error:', msg);
-    // Puppeteer page/frame was torn down (WA page reload or session refresh).
-    // Reset the ready flag so subsequent scans bail out cleanly until the
-    // 'ready' event fires again after the client reconnects.
-    if (/detached Frame|Session closed|Target closed/i.test(msg)) {
-      globalThis.__whatsappReady = false;
-      state.scanMissedDueToDisconnect = true;
-      console.warn('WhatsApp page lost — waiting for client to reconnect...');
-    }
-  }
-
-  console.log(`Scan finished in ${((Date.now() - start) / 1000).toFixed(1)}s\n`);
-
-  state.isRunning = false;
-  state.progress = { current: 0, total: 0 };
-  state.nextRunAt = nextScheduledRun().toISOString();
 }
 
 export async function bootstrap(): Promise<void> {
@@ -227,6 +160,32 @@ export async function bootstrap(): Promise<void> {
         });
         console.log(`  [diag] WAWebSocket state: ${socketState}`);
 
+        // Check ClientInfo deps — these are what run right after the WWebJS poll
+        const connSerialize: string = await page.evaluate(() => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const conn = (window as any).require('WAWebConnModel')?.Conn;
+            if (!conn) return 'WAWebConnModel.Conn is null';
+            conn.serialize();
+            return 'ok';
+          } catch (e) {
+            return 'error: ' + (e as Error).message;
+          }
+        });
+        console.log(`  [diag] WAWebConnModel.Conn.serialize(): ${connSerialize}`);
+
+        const widResult: string = await page.evaluate(() => {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const prefs = (window as any).require('WAWebUserPrefsMeUser');
+            const wid = prefs?.getMaybeMePnUser?.() || prefs?.getMaybeMeLidUser?.();
+            return wid ? 'ok: ' + String(wid) : 'null wid';
+          } catch (e) {
+            return 'error: ' + (e as Error).message;
+          }
+        });
+        console.log(`  [diag] WAWebUserPrefsMeUser wid: ${widResult}`);
+
         const pageUrl: string = page.url();
         console.log(`  [diag] page URL: ${pageUrl}`);
       } catch (e) {
@@ -247,7 +206,10 @@ export async function bootstrap(): Promise<void> {
     globalThis.__whatsappReady = true;
     console.log('WhatsApp client ready.\n');
 
-    state.nextRunAt = nextScheduledRun().toISOString();
+    // Dynamic import — changes to scan.ts are picked up without server restart
+    import('./scan').then(({ nextScheduledRun }) => {
+      state.nextRunAt = nextScheduledRun().toISOString();
+    });
 
     if (!cronStarted) {
       cronStarted = true;
@@ -259,7 +221,7 @@ export async function bootstrap(): Promise<void> {
           schedule,
           () => {
             console.log('Cron fired — starting scheduled scan...');
-            runScan();
+            import('./scan').then(({ runScan }) => runScan());
           },
           { timezone: tz }
         );
@@ -269,7 +231,7 @@ export async function bootstrap(): Promise<void> {
       state.scanMissedDueToDisconnect = false;
       console.log('WhatsApp reconnected — retrying missed scan...');
       // Small delay to let WhatsApp finish its internal page reload
-      setTimeout(() => runScan(), 5000);
+      setTimeout(() => import('./scan').then(({ runScan }) => runScan()), 5000);
     }
   });
 

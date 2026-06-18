@@ -38,10 +38,11 @@ export const RESOLVED_KEYWORDS = [
   'OK', 'Done', 'DONE',
   '冇問題', '無問題', '沒問題',
   'thanks', 'thx', 'Thx', 'Thanks',
-  '已更換', '已換', '已轉換', '已转換', '已转换',
+  '已更換', '已換', '換過', '已轉換', '已转換', '已转换',
   '已送', '已包邊', '已連接', '已连接',
   '可正常使用', 'ok now',
-  '同事黎處理', '呢2日同事黎處理', '安排同事', '同事會跟進', '同事跟進',
+  '成功',
+  '同事黎處理', '呢2日同事黎處理', '安排同事', '同事會跟進', '同事跟進', '搵同事處理', '同事處理',
 ];
 
 const CLIENT_ACK_KEYWORDS = [
@@ -66,7 +67,7 @@ export function isColleague(name: string | null | undefined): boolean {
 }
 
 function isAgentMsg(msg: EnrichedMessage): boolean {
-  return isColleague(msg.senderName);
+  return msg.fromMe === true || isColleague(msg.senderName);
 }
 
 export function matchesKeyword(text: string | null | undefined, keywords: string[]): string | null {

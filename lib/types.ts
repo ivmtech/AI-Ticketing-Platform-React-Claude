@@ -62,6 +62,7 @@ export interface EnrichedMessage {
   timestamp: number;
   author: string | undefined;
   senderName: string;
+  fromMe?: boolean;
 }
 
 export interface ClaudeAnalysisResult {

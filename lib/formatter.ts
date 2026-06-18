@@ -175,7 +175,7 @@ export function formatReport({
         '<td style="' + TD + '"><strong>' + esc(r.groupName) + '</strong></td>' +
         '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.clientSummary) + '</td>' +
         '<td style="' + TD + ';min-width:220px">' + highlightMsg(r.messageContent, r.senderName) + '</td>' +
-        '<td style="' + TD + ';white-space:nowrap">' + (r.timestamp ? r.timestamp.toLocaleTimeString('zh-HK') : '—') + '</td>' +
+        '<td style="' + TD + ';white-space:nowrap">' + (r.timestamp ? r.timestamp.toLocaleDateString('zh-HK') + '<br>' + r.timestamp.toLocaleTimeString('zh-HK') : '—') + '</td>' +
         '<td style="' + TD + ';white-space:nowrap"><span style="background:#2e7d32;color:#fff;padding:2px 8px;border-radius:4px;font-size:12px">已完成</span></td>' +
         '</tr>'
     )
