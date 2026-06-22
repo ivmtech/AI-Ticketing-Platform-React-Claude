@@ -14,61 +14,19 @@ import state from './state';
     exposeFunctionIfAbsent: (page: import('puppeteer').Page, name: string, fn: (...args: unknown[]) => unknown) => Promise<void>;
   };
   puppeteerUtils.exposeFunctionIfAbsent = async (page, name, fn) => {
-    // DIAGNOSTIC: trace every exposeFunctionIfAbsent call so we can see exactly
-    // which one throws during attachEventListeners() (the silent failure that
-    // stops 'ready' from ever firing). Remove once the culprit is identified.
+    const exist: boolean = await page.evaluate((n: string) => !!(window as unknown as Record<string, unknown>)[n], name);
+    if (exist) return;
     try {
-      const exist: boolean = await page.evaluate((n: string) => !!(window as unknown as Record<string, unknown>)[n], name);
-      if (exist) {
-        console.log(`  [expose] ${name}: already on window, skip`);
-        return;
-      }
-      try {
-        await page.exposeFunction(name, fn);
-        console.log(`  [expose] ${name}: ok`);
-      } catch (err) {
-        if ((err as Error).message?.toLowerCase().includes('already')) {
-          // Function registered in Puppeteer's internal map but not on window —
-          // remove it first then re-expose with the new handler.
-          console.warn(`  [expose] ${name}: 'already exists' — removing and re-exposing`);
-          try {
-            await (page as unknown as { removeExposedFunction: (n: string) => Promise<void> }).removeExposedFunction(name);
-          } catch (rmErr) {
-            console.warn(`  [expose] ${name}: removeExposedFunction failed: ${(rmErr as Error).message}`);
-          }
-          await page.exposeFunction(name, fn);
-          console.log(`  [expose] ${name}: re-exposed ok`);
-        } else {
-          console.error(`  [expose] ${name}: THREW (non-'already'): ${(err as Error).message}`);
-          throw err;
-        }
-      }
-    } catch (outerErr) {
-      console.error(`  [expose] ${name}: FAILED — ${(outerErr as Error).message}`);
-      throw outerErr;
-    }
-  };
-})();
-
-// DIAGNOSTIC: the 'ready' stall can also come from the big pupPage.evaluate at
-// the end of Client.attachEventListeners() (it does window.require('WAWebAddon…')
-// bindings; a renamed WA module makes that evaluate reject). That rejection is
-// swallowed by the onAppStateHasSyncedEvent exposed-function wrapper, so 'ready'
-// never fires and no error surfaces. Wrap it to capture the real error.
-(function patchAttachEventListenersLogging() {
-  const proto = Client.prototype as unknown as {
-    attachEventListeners: (...args: unknown[]) => Promise<void>;
-  };
-  const orig = proto.attachEventListeners;
-  proto.attachEventListeners = async function (this: unknown, ...args: unknown[]) {
-    console.log('  [attach] attachEventListeners() start');
-    try {
-      const r = await orig.apply(this, args);
-      console.log('  [attach] attachEventListeners() ok');
-      return r;
+      await page.exposeFunction(name, fn);
     } catch (err) {
-      console.error(`  [attach] attachEventListeners() THREW: ${(err as Error).message}`);
-      throw err;
+      if ((err as Error).message?.toLowerCase().includes('already')) {
+        // Function registered in Puppeteer's internal map but not on window —
+        // remove it first then re-expose with the new handler.
+        try { await (page as unknown as { removeExposedFunction: (n: string) => Promise<void> }).removeExposedFunction(name); } catch { /* ignore */ }
+        await page.exposeFunction(name, fn);
+      } else {
+        throw err;
+      }
     }
   };
 })();
@@ -80,8 +38,6 @@ declare global {
   var __whatsappReady: boolean | undefined;
   // eslint-disable-next-line no-var
   var __bootstrapped: boolean | undefined;
-  // eslint-disable-next-line no-var
-  var __lifecycleHooked: boolean | undefined;
 }
 
 export function getWhatsAppClient(): Client | undefined {
@@ -223,33 +179,6 @@ export async function bootstrap(): Promise<void> {
   client.on('authenticated', () => {
     console.log('WhatsApp authenticated. Waiting for page to finish loading...');
     startReadyWatchdog();
-
-    // DIAGNOSTIC: attach page/browser lifecycle listeners to see WHAT closes the
-    // target (and WHEN relative to attachEventListeners). The 'ready' stall is a
-    // "Target closed" during Runtime.addBinding, meaning the page/browser is torn
-    // down mid-init — this tells us who tears it down. Attach once.
-    if (!globalThis.__lifecycleHooked) {
-      globalThis.__lifecycleHooked = true;
-      const ts = () => new Date().toLocaleTimeString();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const page = (client as any).pupPage;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const browser = (client as any).pupBrowser;
-      if (page) {
-        page.on('close', () => console.warn(`  [life] ${ts()} pupPage 'close'`));
-        page.on('crash', (e: Error) => console.warn(`  [life] ${ts()} pupPage 'crash': ${e?.message}`));
-        page.on('framedetached', () => console.warn(`  [life] ${ts()} pupPage 'framedetached'`));
-        page.on('framenavigated', (f: { url?: () => string }) => {
-          try { console.log(`  [life] ${ts()} pupPage 'framenavigated' -> ${f.url?.()}`); } catch { /* ignore */ }
-        });
-      } else {
-        console.warn('  [life] pupPage not available to hook');
-      }
-      if (browser) {
-        browser.on('disconnected', () => console.warn(`  [life] ${ts()} pupBrowser 'disconnected'`));
-        browser.on('targetdestroyed', () => console.warn(`  [life] ${ts()} pupBrowser 'targetdestroyed'`));
-      }
-    }
 
     // Diagnostic: 5 seconds after auth, check what the page state actually is
     setTimeout(async () => {
