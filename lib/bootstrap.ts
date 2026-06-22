@@ -143,6 +143,9 @@ export async function bootstrap(): Promise<void> {
   });
 
   let readyWatchdog: ReturnType<typeof setTimeout> | null = null;
+  // Reconnect state (used by the 'disconnected' handler below).
+  let reconnecting = false;
+  let reconnectWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   function startReadyWatchdog() {
     if (readyWatchdog) clearTimeout(readyWatchdog);
@@ -229,6 +232,8 @@ export async function bootstrap(): Promise<void> {
 
   client.on('ready', () => {
     if (readyWatchdog) { clearTimeout(readyWatchdog); readyWatchdog = null; }
+    if (reconnectWatchdog) { clearTimeout(reconnectWatchdog); reconnectWatchdog = null; }
+    reconnecting = false;
     globalThis.__whatsappReady = true;
     console.log('WhatsApp client ready.\n');
 
@@ -252,19 +257,58 @@ export async function bootstrap(): Promise<void> {
           { timezone: tz }
         );
       }
-    } else if (state.scanMissedDueToDisconnect) {
-      // WhatsApp reconnected after a mid-scan disconnect — retry the missed scan
-      state.scanMissedDueToDisconnect = false;
-      console.log('WhatsApp reconnected — retrying missed scan...');
-      // Small delay to let WhatsApp finish its internal page reload
-      setTimeout(() => import('./scan').then(({ runScan }) => runScan()), 5000);
+    } else {
+      // Reconnected. Decide whether to run a catch-up scan, because either:
+      //  (a) a tick fired while we were down (scanMissedDueToDisconnect), or
+      //  (b) a scheduled slot elapsed while the process was suspended
+      //      (logout/sleep) — node-cron does NOT replay missed slots.
+      import('./scan').then(({ runScan, lastScheduledRun }) => {
+        const flagged = state.scanMissedDueToDisconnect;
+        let slotMissed = false;
+        if (state.lastRunAt) {
+          slotMissed = lastScheduledRun().getTime() > new Date(state.lastRunAt).getTime();
+        }
+        if (flagged || slotMissed) {
+          state.scanMissedDueToDisconnect = false;
+          console.log(
+            `WhatsApp reconnected — running catch-up scan (${flagged ? 'missed tick' : 'missed schedule slot'})...`
+          );
+          // Small delay to let WhatsApp finish its internal page reload
+          setTimeout(() => runScan(), 5000);
+        }
+      });
     }
   });
+
+  // Re-initialize the client when the page/session is lost (logout, sleep,
+  // WhatsApp Web reload). Without this the client stays permanently "not ready"
+  // after a suspend. A guard + backoff prevents a hot reconnect loop.
+  function scheduleReconnect(reason: string) {
+    if (reconnecting) return;
+    reconnecting = true;
+    console.warn(`WhatsApp reconnecting (${reason})...`);
+    setTimeout(async () => {
+      try { await client.destroy(); } catch { /* ignore */ }
+      try {
+        await client.initialize();
+      } catch (err) {
+        console.error('WhatsApp reconnect initialize() error:', (err as Error).message);
+      } finally {
+        reconnecting = false;
+      }
+      // If the reconnect doesn't reach 'ready', try again later.
+      if (reconnectWatchdog) clearTimeout(reconnectWatchdog);
+      reconnectWatchdog = setTimeout(() => {
+        if (!isWhatsAppReady()) scheduleReconnect('reconnect watchdog');
+      }, 3 * 60 * 1000);
+    }, 5000);
+  }
 
   client.on('disconnected', (reason: string) => {
     if (readyWatchdog) { clearTimeout(readyWatchdog); readyWatchdog = null; }
     globalThis.__whatsappReady = false;
     console.warn('WhatsApp client disconnected:', reason);
+    scheduleReconnect(reason || 'disconnected');
   });
 
   console.log('Starting WhatsApp Group Monitor...');
