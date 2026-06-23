@@ -1,0 +1,142 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { agentMsg, clientMsg } from '../fixtures/builders';
+
+// Mock the Anthropic SDK so no real API call is made in Tier 1. createMock
+// stands in for `anthropic.messages.create`.
+const { createMock } = vi.hoisted(() => ({ createMock: vi.fn() }));
+vi.mock('@anthropic-ai/sdk', () => ({
+  default: class {
+    messages = { create: createMock };
+  },
+}));
+
+import { analyzeChatBatch } from '@/lib/analyzer';
+
+// Build a fake Anthropic response carrying `text` as the first content block.
+function reply(text: string) {
+  return { content: [{ type: 'text', text }] };
+}
+function batchReply(objs: unknown[]) {
+  return reply(JSON.stringify(objs));
+}
+
+beforeEach(() => {
+  createMock.mockReset();
+});
+
+describe('analyzeChatBatch — happy path', () => {
+  it('maps a well-formed batch array onto items in order', async () => {
+    createMock.mockResolvedValueOnce(
+      batchReply([
+        { resolved: true, clientSummary: '門鎖問題', reason: '同事已處理', priority: '中', confidence: 0.9 },
+        { resolved: false, clientSummary: '送貨查詢', reason: '客戶仍在等', priority: '中', confidence: 0.8 },
+      ])
+    );
+
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [clientMsg('個門點開'), agentMsg('我而家睇緊')] },
+      { groupName: 'G2', messages: [clientMsg('幾時送貨')] },
+    ]);
+
+    expect(createMock).toHaveBeenCalledTimes(1); // single batch call
+    expect(results).toHaveLength(2);
+    expect(results[0].resolved).toBe(true);
+    expect(results[1].resolved).toBe(false);
+    expect(results[0].clientSummary).toBe('門鎖問題');
+  });
+});
+
+describe('analyzeChatBatch — keyword short-circuits (no Claude call)', () => {
+  it('resolves via colleague RESOLVED keyword without calling Claude', async () => {
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('個機壞咗'), agentMsg('已搞掂')] },
+    ]);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(results[0].resolved).toBe(true);
+    expect(results[0].confidence).toBe(0.95);
+  });
+
+  it('resolves via client acknowledgement keyword without calling Claude', async () => {
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('多謝晒')] },
+    ]);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(results[0].resolved).toBe(true);
+  });
+});
+
+describe('analyzeChatBatch — verdict overrides', () => {
+  it('forces needsReview + unresolved when confidence is below threshold', async () => {
+    // Default CONFIDENCE_THRESHOLD is 0.7.
+    createMock.mockResolvedValueOnce(
+      batchReply([{ resolved: true, clientSummary: 's', reason: 'r', priority: '中', confidence: 0.5 }])
+    );
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('問題'), agentMsg('睇緊')] },
+    ]);
+    expect(results[0].needsReview).toBe(true);
+    expect(results[0].resolved).toBe(false);
+    expect(results[0].reason).toContain('需人手覆核');
+  });
+
+  it('forces unresolved when Claude says resolved but the client spoke last without ack', async () => {
+    createMock.mockResolvedValueOnce(
+      batchReply([{ resolved: true, clientSummary: 's', reason: 'r', priority: '中', confidence: 0.95 }])
+    );
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('仲要等幾耐')] }, // last msg from client, no ack word
+    ]);
+    expect(results[0].resolved).toBe(false);
+    expect(results[0].reason).toContain('客戶最後發言');
+  });
+
+  it('upgrades priority to 高 when a high-priority keyword is present', async () => {
+    createMock.mockResolvedValueOnce(
+      batchReply([{ resolved: false, clientSummary: 's', reason: 'r', priority: '低', confidence: 0.8 }])
+    );
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('個系統死機喇好緊急'), agentMsg('睇緊')] },
+    ]);
+    expect(results[0].priority).toBe('高');
+  });
+});
+
+describe('analyzeChatBatch — resilience', () => {
+  it('falls back to individual calls when the batch response is malformed', async () => {
+    createMock
+      .mockResolvedValueOnce(reply('sorry, I cannot do that')) // bad batch
+      .mockResolvedValueOnce(reply('{"resolved": true, "clientSummary": "s", "reason": "r", "priority": "中", "confidence": 0.9}'));
+
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('問題'), agentMsg('睇緊')] },
+    ]);
+    expect(createMock).toHaveBeenCalledTimes(2); // batch + 1 individual
+    expect(results[0].resolved).toBe(true);
+  });
+
+  it('falls back when the batch array length does not match item count', async () => {
+    createMock
+      .mockResolvedValueOnce(batchReply([{ resolved: true, clientSummary: 's', reason: 'r', priority: '中', confidence: 0.9 }])) // only 1
+      .mockResolvedValue(reply('{"resolved": false, "clientSummary": "s", "reason": "r", "priority": "中", "confidence": 0.8}'));
+
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [clientMsg('問題一'), agentMsg('睇緊')] },
+      { groupName: 'G2', messages: [clientMsg('問題二'), agentMsg('睇緊')] },
+    ]);
+    expect(results).toHaveLength(2);
+    expect(results[0].resolved).toBe(false);
+    expect(results[1].resolved).toBe(false);
+  });
+
+  it('marks needsReview when both batch and individual fallback fail', async () => {
+    createMock
+      .mockResolvedValueOnce(reply('garbage')) // bad batch
+      .mockRejectedValue(new Error('API down')); // individual fallback fails too
+
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('問題'), agentMsg('睇緊')] },
+    ]);
+    expect(results[0].needsReview).toBe(true);
+    expect(results[0].confidence).toBe(0);
+  });
+});
