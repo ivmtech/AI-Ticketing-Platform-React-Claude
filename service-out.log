@@ -175,3 +175,182 @@ WhatsApp client ready.
 Scheduler active. Cron: "0 9,10,11,12,15,16,17 * * *", "30 13 * * *" (Asia/Hong_Kong)
 WhatsApp loading: 99%
 WhatsApp loading: 0%
+▲ Next.js 16.2.9
+- Local:         http://localhost:3000
+- Network:       http://10.14.0.2:3000
+✓ Ready in 213ms
+Using Chrome at: C:\Program Files\Google\Chrome\Application\chrome.exe
+Cleared any stale WhatsApp Chrome processes before launch.
+Starting WhatsApp Group Monitor...
+WhatsApp loading: 100%
+WhatsApp authenticated. Waiting for page to finish loading...
+WhatsApp client ready.
+
+Scheduler active. Cron: "0 9,10,11,12,15,16,17 * * *", "30 13 * * *" (Asia/Hong_Kong)
+[2026/6/23 下午1:03:07] Scan started
+Found 613 group(s). Scanning last 48 hours (concurrency=5, msg_limit=20)...
+  [4s] Keyword hit "？" in "3276 中環AP辦公室 & 3277 觀塘AP辦公室 x IVM group" — skipping Claude
+  [6s] Keyword hit "幫手" in "啟德一號 一期 3304 2020 2024 x IVM" — skipping Claude
+  [6s] Keyword hit "幫手" in "天台自助售賣機 2199 3663 3664 3365" — skipping Claude
+  [7s] Keyword hit "?" in "EV0284 Kidsland X IVM" — skipping Claude
+  [8s] Keyword hit "幾時" in "BigC x IVM 入貨" — skipping Claude
+  [9s] Keyword hit "?" in "PGC X IVM (奶粉,抹茶)" — skipping Claude
+  [9s] Keyword hit "幫手" in "3728 IVM X 首都" — skipping Claude
+  [9s] Keyword hit "幫手" in "LP10 3666 3209 3210 AIC0038 AIC0039 x IVM" — skipping Claude
+  [9s] Keyword hit "幫手" in "0963 3251 2397 2398 天晉3A x IVM" — skipping Claude
+  [9s] Keyword hit "幫手" in "AIC0083 3524 3212 3213 3306 Marini x Halo Bunny 售賣機支援" — skipping Claude
+  [9s] Keyword hit "幫手" in "AIC0113 3146 MH 海茵莊園 x IVM" — skipping Claude
+  [9s] Keyword hit "幫手" in "領都 2338 2499 2500 2501 2502 2503 2504 2505 2506 2507 2508 X IVM" — skipping Claude
+  [9s] Keyword hit "?" in "天際居Skyline Residence (Test)" — skipping Claude
+  [10s] Keyword hit "故障" in "Nomika咖啡機關注組" — skipping Claude
+  [27s] Batch analyzing 78 group(s) with Claude...
+Scan complete — Total: 78 | Finished: 30 | To Do: 48
+Pending groups:
+  1. 3276 中環AP辦公室 & 3277 觀塘AP辦公室 x IVM group — Support3 at 下午12:58:13
+  2. 啟德一號 一期 3304 2020 2024 x IVM — Mi at 上午11:00:45
+  3. 天台自助售賣機 2199 3663 3664 3365 — 售賣機客戶服務 at 上午10:14:20
+  4. EV0284 Kidsland X IVM — IVM Technology at 上午8:53:51
+  5. BigC x IVM 入貨 — Leo Lui at 下午4:01:02
+  6. 3728 IVM X 首都 — Support3 at 下午1:55:50
+  7. LP10 3666 3209 3210 AIC0038 AIC0039 x IVM — Support3 at 下午1:54:10
+  8. 0963 3251 2397 2398 天晉3A x IVM — Support3 at 下午1:54:16
+  9. AIC0083 3524 3212 3213 3306 Marini x Halo Bunny 售賣機支援 — Support3 at 下午1:55:37
+  10. PGC X IVM (奶粉,抹茶) — PGC Tiff (work phone) at 下午3:12:12
+  11. AIC0113 3146 MH 海茵莊園 x IVM — Support3 at 下午1:53:56
+  12. 領都 2338 2499 2500 2501 2502 2503 2504 2505 2506 2507 2508 X IVM — Support3 at 下午1:53:21
+  13. 天際居Skyline Residence (Test) — alvin1023 at 下午12:33:32
+  14. Nomika咖啡機關注組 — IvmVending_Jack at 上午11:43:15
+  15. 3025 凱匯 x IVM — Drew at 下午12:41:58
+  16. 富衛 FWD 觀灣上 (IVM) - Vending Machine — 😓 at 下午12:51:52
+  17. 長江中心集團 X 智能商店Smart Store — ckh at 下午12:41:33
+  18. 街車 YU1626 x IVM — Lo at 下午12:04:48
+  19. Synergy DistributionX IVM — Dorothy at 下午12:18:31
+  20. Authur vending — authur at 下午12:14:42
+  21. IVM x Yoho Midtown 2401 2402 2684 2685 2688 2689 2690 2691 2696 2697 — Man Leung at 上午11:38:20
+  22. IVM1台-Site Visit地點相 — SherryShum at 上午11:07:34
+  23. 3305 啟德一號 二期 x ivm 通知群 — Mini at 上午11:04:02
+  24. 3613 金域假日酒店 飯堂 x IVM — Laurence Law at 上午10:30:38
+  25. 觀塘警署 C0082 AIC0330 x IVM — 駿武田一🥳🍤🍱🦪🍗🍒🍇😘 at 上午10:27:14
+  26. 街車 MM3348 x IVM — Po at 上午10:03:08
+  27. Nood by Pure EV0165 EV0166 EV0172 EV0240 EV0292 x IVM 售賣機 — Punam at 上午11:00:44
+  28. 挪亞方舟/太陽村莊 2974 2975 2976 2977 x IVM — Michelle Lee at 上午9:49:25
+  29. 香港仔南寓 EV0238 AIC0056 x IVM — Ivy•_• at 上午9:40:57
+  30. 3567 3568 C0073p 朗賢峯(港鐵營運方) x IVM — Gordon at 上午7:24:59
+  31. 3391入口 3392會所 C0081 將軍澳 帝景灣 x IVM 售後 — Mandy Lo at 上午9:41:25
+  32. Sierra Sea 3631 3632 3633 3636 3637 3638 3639 3640  3651 AIC0166 AIC0168 X IVM — 安東尼 at 上午9:14:49
+  33. 香港 01 HK01 3498 AIC0001 x IVM — Jacqueline at 下午5:58:09
+  34. 朗屏8 783 784 x IVM — QuancyLi at 下午9:16:46
+  35. 百老匯戲院(總群) x 果昔機 — Suet at 下午8:54:07
+  36. IVM x 賣機（零食飲品） — Gigi Leung at 下午4:55:54
+  37. 2659 葵涌警署 x IVM — Yuki at 下午5:40:56
+  38. SGS 3195 AIC0055 x IVM — Kr Y at 下午3:54:44
+  39. 3192 3193 帝景園 x IVM — Derek S at 下午4:19:19
+  40. FAIRTASTE X IVM Operation — Martin Chan at 下午3:48:26
+  41. 圓方百老滙 x 果昔 — Ida Lam at 下午3:14:33
+  42. 3369 Standard Life 標準人壽 x IVM — 🤍 at 下午1:57:34
+  43. 2820 2821 AIC0325 帝京酒店 x IVM — PMIC at 下午1:19:15
+  44. 3137 尖沙咀Mattel x IVM — Sa at 下午12:50:57
+  45. IVM x Aplus （活動租機） — Ada lam at 上午11:51:12
+  46. WM Hotel 3591 3592 3593 3594 3595 X IVM — Real Real at 下午12:13:23
+  47. 天晉 3155 3156 3157 C0052 x IVM — Winnie at 上午11:22:38
+  48. AIC0106 3010 3609 現崇山 x IVM — C at 上午9:25:03
+Email sent → itstaff07@ivmtech.com  (messageId: <a906ce80-3e60-bcf0-7f29-63252aaf35a8@ivmtech.com>)
+Scan finished in 191.2s
+
+▲ Next.js 16.2.9
+- Local:         http://localhost:3000
+- Network:       http://10.14.0.2:3000
+✓ Ready in 242ms
+Using Chrome at: C:\Program Files\Google\Chrome\Application\chrome.exe
+Cleared any stale WhatsApp Chrome processes before launch.
+Starting WhatsApp Group Monitor...
+WhatsApp loading: 100%
+WhatsApp authenticated. Waiting for page to finish loading...
+WhatsApp client ready.
+
+Scheduler active. Cron: "0 9,10,11,12,15,16,17 * * *", "30 13 * * *" (Asia/Hong_Kong)
+Cron fired — starting scheduled scan...
+[2026/6/23 下午1:30:00] Scan started
+Found 613 group(s). Scanning last 48 hours (concurrency=5, msg_limit=20)...
+  [0s] Colleague resolved "AIC0209 RAIC0024 Global Switch x IVM" ("售賣機客戶服務": "無問題") — skipping Claude
+  [0s] Keyword hit "？" in "3276 中環AP辦公室 & 3277 觀塘AP辦公室 x IVM group" — skipping Claude
+  [2s] Keyword hit "幫手" in "啟德一號 一期 3304 2020 2024 x IVM" — skipping Claude
+  [2s] Keyword hit "幫手" in "天台自助售賣機 2199 3663 3664 3365" — skipping Claude
+  [3s] Keyword hit "?" in "EV0284 Kidsland X IVM" — skipping Claude
+  [3s] Keyword hit "幾時" in "BigC x IVM 入貨" — skipping Claude
+  [4s] Keyword hit "?" in "PGC X IVM (奶粉,抹茶)" — skipping Claude
+  [4s] Keyword hit "幫手" in "3728 IVM X 首都" — skipping Claude
+  [4s] Keyword hit "幫手" in "LP10 3666 3209 3210 AIC0038 AIC0039 x IVM" — skipping Claude
+  [4s] Keyword hit "幫手" in "0963 3251 2397 2398 天晉3A x IVM" — skipping Claude
+  [4s] Keyword hit "幫手" in "AIC0083 3524 3212 3213 3306 Marini x Halo Bunny 售賣機支援" — skipping Claude
+  [4s] Keyword hit "幫手" in "AIC0113 3146 MH 海茵莊園 x IVM" — skipping Claude
+  [5s] Keyword hit "幫手" in "領都 2338 2499 2500 2501 2502 2503 2504 2505 2506 2507 2508 X IVM" — skipping Claude
+  [5s] Keyword hit "?" in "天際居Skyline Residence (Test)" — skipping Claude
+  [6s] Keyword hit "故障" in "Nomika咖啡機關注組" — skipping Claude
+  [22s] Batch analyzing 77 group(s) with Claude...
+Scan complete — Total: 79 | Finished: 35 | To Do: 44
+Pending groups:
+  1. 3276 中環AP辦公室 & 3277 觀塘AP辦公室 x IVM group — Support3 at 下午12:58:13
+  2. 啟德一號 一期 3304 2020 2024 x IVM — Mi at 上午11:00:45
+  3. 天台自助售賣機 2199 3663 3664 3365 — 售賣機客戶服務 at 上午10:14:20
+  4. EV0284 Kidsland X IVM — IVM Technology at 上午8:53:51
+  5. BigC x IVM 入貨 — Leo Lui at 下午4:01:02
+  6. 3728 IVM X 首都 — Support3 at 下午1:55:50
+  7. LP10 3666 3209 3210 AIC0038 AIC0039 x IVM — Support3 at 下午1:54:10
+  8. 0963 3251 2397 2398 天晉3A x IVM — Support3 at 下午1:54:16
+  9. AIC0083 3524 3212 3213 3306 Marini x Halo Bunny 售賣機支援 — Support3 at 下午1:55:37
+  10. PGC X IVM (奶粉,抹茶) — PGC Tiff (work phone) at 下午3:12:12
+  11. AIC0113 3146 MH 海茵莊園 x IVM — Support3 at 下午1:53:56
+  12. 領都 2338 2499 2500 2501 2502 2503 2504 2505 2506 2507 2508 X IVM — Support3 at 下午1:53:21
+  13. 天際居Skyline Residence (Test) — alvin1023 at 下午12:33:32
+  14. Nomika咖啡機關注組 — IvmVending_Jack at 上午11:43:15
+  15. Nood by Pure EV0165 EV0166 EV0172 EV0240 EV0292 x IVM 售賣機 — Punam at 下午1:09:57
+  16. 富衛 FWD 觀灣上 (IVM) - Vending Machine — 😓 at 下午12:51:52
+  17. 3025 凱匯 x IVM — Drew at 下午12:41:58
+  18. 街車 YU1626 x IVM — Lo at 下午12:04:48
+  19. Authur vending — authur at 下午12:14:42
+  20. 長江中心集團 X 智能商店Smart Store — ckh at 下午12:41:33
+  21. Synergy DistributionX IVM — Dorothy at 下午12:18:31
+  22. IVM x Yoho Midtown 2401 2402 2684 2685 2688 2689 2690 2691 2696 2697 — Man Leung at 上午11:38:20
+  23. 養心養生 RAIC0040-45,47-52,57-66 EV0270 EV0271 X IVM — Johnlan Choy at 上午11:33:54
+  24. 3305 啟德一號 二期 x ivm 通知群 — Mini at 上午11:04:02
+  25. 3613 金域假日酒店 飯堂 x IVM — Laurence Law at 上午10:30:38
+  26. 觀塘警署 C0082 AIC0330 x IVM — 駿武田一🥳🍤🍱🦪🍗🍒🍇😘 at 上午10:27:14
+  27. 挪亞方舟/太陽村莊 2974 2975 2976 2977 x IVM — Michelle Lee at 上午9:49:25
+  28. 香港仔南寓 EV0238 AIC0056 x IVM — Ivy•_• at 上午9:40:57
+  29. 3567 3568 C0073p 朗賢峯(港鐵營運方) x IVM — Gordon at 上午7:24:59
+  30. Sierra Sea 3631 3632 3633 3636 3637 3638 3639 3640  3651 AIC0166 AIC0168 X IVM — 安東尼 at 上午9:14:49
+  31. 香港 01 HK01 3498 AIC0001 x IVM — Jacqueline at 下午5:58:09
+  32. IVM x 賣機（零食飲品） — Gigi Leung at 下午4:55:54
+  33. 朗屏8 783 784 x IVM — QuancyLi at 下午9:16:46
+  34. 百老匯戲院(總群) x 果昔機 — Suet at 下午8:54:07
+  35. 2659 葵涌警署 x IVM — Yuki at 下午5:40:56
+  36. 3192 3193 帝景園 x IVM — Derek S at 下午4:19:19
+  37. FAIRTASTE X IVM Operation — Martin Chan at 下午3:48:26
+  38. 圓方百老滙 x 果昔 — Ida Lam at 下午3:14:33
+  39. 3369 Standard Life 標準人壽 x IVM — 🤍 at 下午1:57:34
+  40. 2820 2821 AIC0325 帝京酒店 x IVM — PMIC at 下午1:19:15
+  41. 3137 尖沙咀Mattel x IVM — Sa at 下午12:50:57
+  42. IVM x Aplus （活動租機） — Ada lam at 上午11:51:12
+  43. WM Hotel 3591 3592 3593 3594 3595 X IVM — Real Real at 下午12:13:23
+  44. AIC0106 3010 3609 現崇山 x IVM — C at 上午9:25:03
+Email sent → itstaff07@ivmtech.com, accounting@ivmtech.com, leo@ivmtech.com, rex.leung@ivmtech.com  (messageId: <ff228c14-22dc-ad35-fb03-62ec227045cd@ivmtech.com>)
+Scan finished in 74.9s
+
+▲ Next.js 16.2.9
+- Local:         http://localhost:3000
+- Network:       http://10.14.0.2:3000
+✓ Ready in 220ms
+Using Chrome at: C:\Program Files\Google\Chrome\Application\chrome.exe
+Cleared any stale WhatsApp Chrome processes before launch.
+Starting WhatsApp Group Monitor...
+WhatsApp loading: 95%
+WhatsApp authenticated. Waiting for page to finish loading...
+WhatsApp loading: 99%
+WhatsApp client ready.
+
+Scheduler active. Cron: "0 9,11,13,15,17 * * *", "30 17 * * *" (Asia/Hong_Kong)
+Cron fired — starting scheduled scan...
+[2026/6/23 下午3:00:00] Scan started
+Scan finished in 0.0s
+

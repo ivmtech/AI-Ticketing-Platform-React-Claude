@@ -18,6 +18,13 @@ describe('classifyCategory — keyword classification', () => {
     expect(classifyCategory('想續約')).toBe('合約');
   });
 
+  it('tags restock / transfer / price-change messages as 補貨', () => {
+    expect(classifyCategory('Hello All 聽日黎補貨，幫手報車牌，車牌：MM3348.Thanks')).toBe('補貨');
+    expect(classifyCategory('收到，最快明天到場地補貨 車牌確認後再send上來')).toBe('補貨');
+    expect(classifyCategory('要求修改機器內飲品價格')).toBe('補貨');
+    expect(classifyCategory('麻煩轉貨去另一部機')).toBe('補貨');
+  });
+
   it('tags pricing messages as 報價', () => {
     expect(classifyCategory('呢part幾錢?')).toBe('報價');
     expect(classifyCategory('麻煩報個價')).toBe('報價');

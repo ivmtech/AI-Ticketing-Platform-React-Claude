@@ -66,20 +66,24 @@ const CLIENT_ACK_KEYWORDS = [
 // Falls through to '其他' when nothing matches.
 export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }> = [
   { category: '合約', keywords: ['合約', '續約', '繼約', '約滿', '約到期', '到期', '約到', 'renew', 'renewal'] },
+  // 補貨 covers field/stock operations: restock, transfer goods, price changes, car-plate reports.
+  { category: '補貨', keywords: ['補貨', '補水', '補機', '轉貨', '調貨', '換貨', '改價', '改價錢', '改價格', '改飲品價', '修改價格', '飲品價格', '報車牌', '車牌'] },
   { category: '報價', keywords: ['報價', '報個價', '幾錢', '幾多錢', '價錢', '價目', '收費', '月費', '年費', 'quote', 'quotation'] },
   { category: '維修', keywords: ['維修', '整返', '整好', '修理', '壞咗', '壞了', '故障', '死機', '當機', '冇反應', '無反應', '開唔到', '用唔到', '冇得用', '無得用'] },
   { category: '投訴', keywords: ['投訴', '好慢', '好耐', '等咗好耐', '好差', '唔滿意', '態度'] },
   { category: '查詢', keywords: ['查詢', '請問', '點用', '點樣', '可唔可以', '有冇', '係咪', '想問'] },
 ];
 
-// Per-category colour for the report badge (one colour each).
-export const CATEGORY_COLORS: Record<Category, string> = {
-  '合約': '#1565c0', // blue
-  '報價': '#00838f', // teal
-  '維修': '#d84315', // deep orange
-  '查詢': '#6a1b9a', // purple
-  '投訴': '#c62828', // red
-  '其他': '#757575', // grey
+// Per-category badge colours. bg = background, fg = text. 合約 is yellow per
+// request, so it needs dark text for contrast; the rest are solid + white text.
+export const CATEGORY_COLORS: Record<Category, { bg: string; fg: string }> = {
+  '合約': { bg: '#fbc02d', fg: '#4a3b00' }, // yellow / dark text
+  '補貨': { bg: '#1565c0', fg: '#ffffff' }, // blue
+  '報價': { bg: '#00838f', fg: '#ffffff' }, // teal
+  '維修': { bg: '#d84315', fg: '#ffffff' }, // deep orange
+  '查詢': { bg: '#6a1b9a', fg: '#ffffff' }, // purple
+  '投訴': { bg: '#c62828', fg: '#ffffff' }, // red
+  '其他': { bg: '#757575', fg: '#ffffff' }, // grey
 };
 
 export function classifyCategory(text: string | null | undefined): Category {

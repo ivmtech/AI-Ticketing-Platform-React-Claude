@@ -13,3 +13,23 @@ stderr:
 TROUBLESHOOTING: https://pptr.dev/troubleshooting
 
 ⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+  Batch Claude analysis failed (Array length mismatch: expected 15, got 14). Falling back to individual calls...
+  Individual fallback failed for "3391入口 3392會所 C0081 將軍澳 帝景灣 x IVM 售後": 429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your organization's rate limit of 5 requests per minute (org: c515692e-4f69-47e1-814a-e5eec47cf8ac, model: claude-haiku-4-5-20251001). For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Try again later. View your current limits at https://console.anthropic.com/settings/limits. You may also contact sales at https://claude.com/contact-sales to discuss your options for a rate limit increase."},"request_id":"req_011CcKcF1ayG34CnsQxQccCV"}
+  Individual fallback failed for "香港 01 HK01 3498 AIC0001 x IVM": 429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your organization's rate limit of 5 requests per minute (org: c515692e-4f69-47e1-814a-e5eec47cf8ac, model: claude-haiku-4-5-20251001). For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Try again later. View your current limits at https://console.anthropic.com/settings/limits. You may also contact sales at https://claude.com/contact-sales to discuss your options for a rate limit increase."},"request_id":"req_011CcKcF2S4dSRJ8wMPaTdtB"}
+  Individual fallback failed for "IVM x 賣機（零食飲品）": 429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your organization's rate limit of 5 requests per minute (org: c515692e-4f69-47e1-814a-e5eec47cf8ac, model: claude-haiku-4-5-20251001). For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Try again later. View your current limits at https://console.anthropic.com/settings/limits. You may also contact sales at https://claude.com/contact-sales to discuss your options for a rate limit increase."},"request_id":"req_011CcKcGjD2itSuVUUbHpHRe"}
+  Individual fallback failed for "SGS 3195 AIC0055 x IVM": 429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your organization's rate limit of 5 requests per minute (org: c515692e-4f69-47e1-814a-e5eec47cf8ac, model: claude-haiku-4-5-20251001). For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Try again later. View your current limits at https://console.anthropic.com/settings/limits. You may also contact sales at https://claude.com/contact-sales to discuss your options for a rate limit increase."},"request_id":"req_011CcKcHhGE5CFwmW7ijGdwt"}
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+Scan error: Attempted to use detached Frame '9BE2C5951B0094BD60DF9D30147DA2C6'.
+WhatsApp page lost — triggering reconnect...
+WhatsApp reconnecting (detached frame during scan)...
+WhatsApp reconnect initialize() error: The browser is already running for C:\Users\IVM\Development\AI-Ticketing-Platform-React-Claude\.wwebjs_auth\session. Use a different `userDataDir` or stop the running browser first.
+WhatsApp reconnecting (reconnect watchdog)...
+WhatsApp reconnect initialize() error: The browser is already running for C:\Users\IVM\Development\AI-Ticketing-Platform-React-Claude\.wwebjs_auth\session. Use a different `userDataDir` or stop the running browser first.
+WhatsApp reconnecting (reconnect watchdog)...
+WhatsApp reconnect initialize() error: The browser is already running for C:\Users\IVM\Development\AI-Ticketing-Platform-React-Claude\.wwebjs_auth\session. Use a different `userDataDir` or stop the running browser first.
+WhatsApp reconnecting (reconnect watchdog)...
+WhatsApp reconnect initialize() error: The browser is already running for C:\Users\IVM\Development\AI-Ticketing-Platform-React-Claude\.wwebjs_auth\session. Use a different `userDataDir` or stop the running browser first.
+WhatsApp reconnecting (reconnect watchdog)...
+WhatsApp reconnect initialize() error: The browser is already running for C:\Users\IVM\Development\AI-Ticketing-Platform-React-Claude\.wwebjs_auth\session. Use a different `userDataDir` or stop the running browser first.

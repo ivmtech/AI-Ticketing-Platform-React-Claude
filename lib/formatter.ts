@@ -70,8 +70,8 @@ function priorityBadge(priority: Priority): string {
 }
 
 function categoryBadge(category: Category): string {
-  const color = CATEGORY_COLORS[category] ?? CATEGORY_COLORS['其他'];
-  return '<span style="background:' + color + ';color:#fff;padding:2px 10px;border-radius:4px;font-size:12px;font-weight:bold">' + (category ?? '其他') + '</span>';
+  const { bg, fg } = CATEGORY_COLORS[category] ?? CATEGORY_COLORS['其他'];
+  return '<span style="background:' + bg + ';color:' + fg + ';padding:2px 10px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap">' + (category ?? '其他') + '</span>';
 }
 
 function reviewBadge(): string {
@@ -176,7 +176,7 @@ export function formatReport({
         '<tr style="background:' + (i % 2 === 0 ? '#ffffff' : '#f7f7f7') + '">' +
         '<td style="' + TD + '">' + (i + 1) + '</td>' +
         '<td style="' + TD + '">' + priorityBadge(r.priority) + (r.needsReview ? '<br>' + reviewBadge() : '') + '</td>' +
-        '<td style="' + TD + '">' + categoryBadge(r.category) + '</td>' +
+        '<td style="' + TD + ';white-space:nowrap">' + categoryBadge(r.category) + '</td>' +
         '<td style="' + TD + '"><strong>' + esc(r.groupName) + '</strong></td>' +
         '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.clientSummary) + '</td>' +
         '<td style="' + TD + ';min-width:220px">' + highlightMsg(r.messageContent, r.senderName) + '</td>' +
@@ -193,7 +193,7 @@ export function formatReport({
         '<thead><tr style="background:#f0f0f0">' +
         '<th style="' + TH + '">#</th>' +
         '<th style="' + TH + '">優先級</th>' +
-        '<th style="' + TH + '">分類</th>' +
+        '<th style="' + TH + ';white-space:nowrap">分類</th>' +
         '<th style="' + TH + '">群組</th>' +
         '<th style="' + TH + ';min-width:180px">事件摘要</th>' +
         '<th style="' + TH + ';min-width:220px">最後訊息</th>' +
