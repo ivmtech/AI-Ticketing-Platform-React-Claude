@@ -10,47 +10,49 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }));
 
-import { analyzeChatBatch, classifyCategory } from '@/lib/analyzer';
+import { analyzeChatBatch, classifyCategories } from '@/lib/analyzer';
 
-describe('classifyCategory — keyword classification', () => {
+describe('classifyCategories — keyword classification', () => {
   it('tags contract/renewal messages as 合約', () => {
-    expect(classifyCategory('Hello.我哋合約好似到30/7,繼約嗎?')).toBe('合約');
-    expect(classifyCategory('想續約')).toBe('合約');
+    expect(classifyCategories('Hello.我哋合約好似到30/7,繼約嗎?')).toEqual(['合約']);
+    expect(classifyCategories('想續約')).toEqual(['合約']);
   });
 
   it('tags restock / transfer / price-change messages as 補貨', () => {
-    expect(classifyCategory('Hello All 聽日黎補貨，幫手報車牌，車牌：MM3348.Thanks')).toBe('補貨');
-    expect(classifyCategory('收到，最快明天到場地補貨 車牌確認後再send上來')).toBe('補貨');
-    expect(classifyCategory('要求修改機器內飲品價格')).toBe('補貨');
-    expect(classifyCategory('麻煩轉貨去另一部機')).toBe('補貨');
+    expect(classifyCategories('Hello All 聽日黎補貨，幫手報車牌，車牌：MM3348.Thanks')).toEqual(['補貨']);
+    expect(classifyCategories('收到，最快明天到場地補貨 車牌確認後再send上來')).toEqual(['補貨']);
+    expect(classifyCategories('要求修改機器內飲品價格')).toEqual(['補貨']);
+    expect(classifyCategories('麻煩轉貨去另一部機')).toEqual(['補貨']);
   });
 
   it('tags pricing messages as 報價', () => {
-    expect(classifyCategory('呢part幾錢?')).toBe('報價');
-    expect(classifyCategory('麻煩報個價')).toBe('報價');
+    expect(classifyCategories('呢part幾錢?')).toEqual(['報價']);
+    expect(classifyCategories('麻煩報個價')).toEqual(['報價']);
   });
 
   it('tags fault messages as 維修', () => {
-    expect(classifyCategory('部機壞咗開唔到')).toBe('維修');
+    expect(classifyCategories('部機壞咗開唔到')).toEqual(['維修']);
   });
 
   it('tags complaints as 投訴', () => {
-    expect(classifyCategory('等咗好耐都未有人理')).toBe('投訴');
+    expect(classifyCategories('等咗好耐都未有人理')).toEqual(['投訴']);
   });
 
   it('tags general questions as 查詢', () => {
-    expect(classifyCategory('請問點用?')).toBe('查詢');
+    expect(classifyCategories('請問點用?')).toEqual(['查詢']);
   });
 
-  it('falls back to 其他 when nothing matches and on empty input', () => {
-    expect(classifyCategory('好的收到')).toBe('其他');
-    expect(classifyCategory('')).toBe('其他');
-    expect(classifyCategory(null)).toBe('其他');
+  it('falls back to [其他] when nothing matches and on empty input', () => {
+    expect(classifyCategories('好的收到')).toEqual(['其他']);
+    expect(classifyCategories('')).toEqual(['其他']);
+    expect(classifyCategories(null)).toEqual(['其他']);
   });
 
-  it('prefers 合約 over other matches when both appear', () => {
-    // contains both a 合約 keyword and a 報價 keyword; 合約 wins by order
-    expect(classifyCategory('續約嘅話幾錢?')).toBe('合約');
+  it('returns multiple categories (in defined order) when several match', () => {
+    // contains a 合約 keyword AND a 報價 keyword → both badges, 合約 first
+    expect(classifyCategories('續約嘅話幾錢?')).toEqual(['合約', '報價']);
+    // restock + fault
+    expect(classifyCategories('部機壞咗，順便補貨')).toEqual(['補貨', '維修']);
   });
 });
 

@@ -86,12 +86,16 @@ export const CATEGORY_COLORS: Record<Category, { bg: string; fg: string }> = {
   '其他': { bg: '#757575', fg: '#ffffff' }, // grey
 };
 
-export function classifyCategory(text: string | null | undefined): Category {
-  if (!text) return '其他';
+// Returns EVERY category whose keywords appear in the text (in the order they
+// are defined above, so 合約 leads). An entry can therefore carry multiple
+// badges. Falls back to ['其他'] when nothing matches.
+export function classifyCategories(text: string | null | undefined): Category[] {
+  if (!text) return ['其他'];
+  const hits: Category[] = [];
   for (const { category, keywords } of CATEGORY_KEYWORDS) {
-    if (matchesKeyword(text, keywords)) return category;
+    if (matchesKeyword(text, keywords)) hits.push(category);
   }
-  return '其他';
+  return hits.length > 0 ? hits : ['其他'];
 }
 
 export const COLLEAGUE_NAMES: string[] = (process.env.COLLEAGUE_NAMES ?? '')

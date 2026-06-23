@@ -35,7 +35,7 @@ export function entry(partial: Partial<ScanEntry> = {}): ScanEntry {
     clientSummary: '系統故障',
     reason: '客戶報告故障',
     priority: '中' as Priority,
-    category: '維修' as Category,
+    categories: ['維修'] as Category[],
     confidence: 0.8,
     needsReview: false,
     ...partial,

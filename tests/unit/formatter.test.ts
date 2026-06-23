@@ -91,7 +91,7 @@ describe('formatReport', () => {
   it('renders a 分類 column and drops the 狀態 column', () => {
     const r = formatReport({
       resolved: [],
-      unresolved: [entry({ category: '合約' })],
+      unresolved: [entry({ categories: ['合約'] })],
       skipped: [],
     });
     expect(r.html).toContain('>分類<');
@@ -100,6 +100,17 @@ describe('formatReport', () => {
     expect(r.html).toContain('合約');
     // and it appears in the text report
     expect(r.text).toContain('分類          : 合約');
+  });
+
+  it('renders multiple category badges when an entry has several categories', () => {
+    const r = formatReport({
+      resolved: [],
+      unresolved: [entry({ categories: ['合約', '報價'] })],
+      skipped: [],
+    });
+    expect(r.html).toContain('合約');
+    expect(r.html).toContain('報價');
+    expect(r.text).toContain('分類          : 合約、報價');
   });
 
   it('highlights colleague names differently from clients', () => {

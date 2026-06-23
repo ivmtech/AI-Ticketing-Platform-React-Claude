@@ -1,7 +1,7 @@
 export type Priority = '高' | '中' | '低';
 
-// Ticket category. Keyword-classified (see classifyCategory in analyzer.ts).
-// '其他' is the default when nothing matches.
+// Ticket category. Keyword-classified (see classifyCategories in analyzer.ts).
+// An entry can match several categories; '其他' is the fallback when none match.
 export type Category = '合約' | '補貨' | '報價' | '維修' | '查詢' | '投訴' | '其他';
 
 export interface ScanEntry {
@@ -13,7 +13,7 @@ export interface ScanEntry {
   clientSummary: string;
   reason: string;
   priority: Priority;
-  category: Category;
+  categories: Category[];
   confidence: number;
   needsReview: boolean;
 }

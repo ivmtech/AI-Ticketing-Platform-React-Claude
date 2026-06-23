@@ -71,7 +71,12 @@ function priorityBadge(priority: Priority): string {
 
 function categoryBadge(category: Category): string {
   const { bg, fg } = CATEGORY_COLORS[category] ?? CATEGORY_COLORS['其他'];
-  return '<span style="background:' + bg + ';color:' + fg + ';padding:2px 10px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap">' + (category ?? '其他') + '</span>';
+  return '<span style="display:inline-block;background:' + bg + ';color:' + fg + ';padding:2px 10px;border-radius:4px;font-size:12px;font-weight:bold;white-space:nowrap">' + (category ?? '其他') + '</span>';
+}
+
+function categoryBadges(categories: Category[]): string {
+  const list = categories.length > 0 ? categories : (['其他'] as Category[]);
+  return '<div style="display:flex;flex-wrap:wrap;gap:4px">' + list.map(categoryBadge).join('') + '</div>';
 }
 
 function reviewBadge(): string {
@@ -122,7 +127,7 @@ export function formatReport({
       (i + 1) + '. [' + r.priority + ']' + (r.needsReview ? ' [需人手覆核]' : '') + ' ' + r.groupName + '\n' +
       '   客戶          : ' + r.senderName + ' (' + r.senderNumber + ')\n' +
       '   優先級        : ' + r.priority + '\n' +
-      '   分類          : ' + r.category + '\n' +
+      '   分類          : ' + (r.categories.length ? r.categories.join('、') : '其他') + '\n' +
       '   時間          : ' + r.timestamp.toLocaleTimeString('zh-HK') + '\n' +
       '   事件摘要      : ' + r.clientSummary + '\n' +
       '   最後訊息      : ' + r.messageContent
@@ -176,7 +181,7 @@ export function formatReport({
         '<tr style="background:' + (i % 2 === 0 ? '#ffffff' : '#f7f7f7') + '">' +
         '<td style="' + TD + '">' + (i + 1) + '</td>' +
         '<td style="' + TD + '">' + priorityBadge(r.priority) + (r.needsReview ? '<br>' + reviewBadge() : '') + '</td>' +
-        '<td style="' + TD + ';white-space:nowrap">' + categoryBadge(r.category) + '</td>' +
+        '<td style="' + TD + ';white-space:nowrap">' + categoryBadges(r.categories) + '</td>' +
         '<td style="' + TD + '"><strong>' + esc(r.groupName) + '</strong></td>' +
         '<td style="' + TD + ';color:#555;min-width:180px">' + esc(r.clientSummary) + '</td>' +
         '<td style="' + TD + ';min-width:220px">' + highlightMsg(r.messageContent, r.senderName) + '</td>' +
