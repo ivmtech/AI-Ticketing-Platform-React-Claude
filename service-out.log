@@ -1,0 +1,78 @@
+▲ Next.js 16.2.9
+- Local:         http://localhost:3000
+- Network:       http://10.14.0.2:3000
+✓ Ready in 189ms
+Using Chrome at: C:\Program Files\Google\Chrome\Application\chrome.exe
+Cleared any stale WhatsApp Chrome processes before launch.
+Starting WhatsApp Group Monitor...
+WhatsApp loading: 95%
+WhatsApp authenticated. Waiting for page to finish loading...
+WhatsApp loading: 99%
+WhatsApp client ready.
+
+Scheduler active. Cron: "0 9,10,15,17 * * *", "30 13,16 * * *" (Asia/Hong_Kong)
+[2026/6/23 上午10:43:22] Scan started
+Found 613 group(s). Scanning last 48 hours (concurrency=5, msg_limit=20)...
+  [4s] Keyword hit "?" in "Synergy DistributionX IVM" — skipping Claude
+  [4s] Keyword hit "?" in "Nood by Pure EV0165 EV0166 EV0172 EV0240 EV0292 x IVM 售賣機" — skipping Claude
+  [5s] Keyword hit "幫手" in "天台自助售賣機 2199 3663 3664 3365" — skipping Claude
+  [6s] Keyword hit "?" in "EV0284 Kidsland X IVM" — skipping Claude
+  [6s] Keyword hit "幫手" in "24/7 跑馬地 販賣機 FN061 3703" — skipping Claude
+  [7s] Keyword hit "幾時" in "BigC x IVM 入貨" — skipping Claude
+  [7s] Keyword hit "幫手" in "3728 IVM X 首都" — skipping Claude
+  [7s] Keyword hit "?" in "PGC X IVM (奶粉,抹茶)" — skipping Claude
+  [7s] Keyword hit "幫手" in "0963 3251 2397 2398 天晉3A x IVM" — skipping Claude
+  [8s] Keyword hit "幫手" in "LP10 3666 3209 3210 AIC0038 AIC0039 x IVM" — skipping Claude
+  [8s] Keyword hit "幫手" in "AIC0083 3524 3212 3213 3306 Marini x Halo Bunny 售賣機支援" — skipping Claude
+  [8s] Keyword hit "幫手" in "AIC0113 3146 MH 海茵莊園 x IVM" — skipping Claude
+  [8s] Keyword hit "幫手" in "領都 2338 2499 2500 2501 2502 2503 2504 2505 2506 2507 2508 X IVM" — skipping Claude
+  [8s] Keyword hit "?" in "天際居Skyline Residence (Test)" — skipping Claude
+  [9s] Keyword hit "故障" in "Nomika咖啡機關注組" — skipping Claude
+  [32s] Batch analyzing 71 group(s) with Claude...
+Scan complete — Total: 74 | Finished: 32 | To Do: 42
+Pending groups:
+  1. Synergy DistributionX IVM — Dorothy at 上午10:37:37
+  2. Nood by Pure EV0165 EV0166 EV0172 EV0240 EV0292 x IVM 售賣機 — Rex (IVM) at 上午10:26:31
+  3. 天台自助售賣機 2199 3663 3664 3365 — 售賣機客戶服務 at 上午10:14:20
+  4. EV0284 Kidsland X IVM — IVM Technology at 上午8:53:51
+  5. 24/7 跑馬地 販賣機 FN061 3703 — 售賣機客戶服務 at 下午5:49:59
+  6. BigC x IVM 入貨 — Leo Lui at 下午4:01:02
+  7. 3728 IVM X 首都 — Support3 at 下午1:55:50
+  8. 0963 3251 2397 2398 天晉3A x IVM — Support3 at 下午1:54:16
+  9. LP10 3666 3209 3210 AIC0038 AIC0039 x IVM — Support3 at 下午1:54:10
+  10. AIC0083 3524 3212 3213 3306 Marini x Halo Bunny 售賣機支援 — Support3 at 下午1:55:37
+  11. PGC X IVM (奶粉,抹茶) — PGC Tiff (work phone) at 下午3:12:12
+  12. AIC0113 3146 MH 海茵莊園 x IVM — Support3 at 下午1:53:56
+  13. 領都 2338 2499 2500 2501 2502 2503 2504 2505 2506 2507 2508 X IVM — Support3 at 下午1:53:21
+  14. 天際居Skyline Residence (Test) — alvin1023 at 下午12:33:32
+  15. Nomika咖啡機關注組 — IvmVending_Jack at 上午11:43:15
+  16. 3613 金域假日酒店 飯堂 x IVM — Laurence Law at 上午10:30:38
+  17. 觀塘警署 C0082 AIC0330 x IVM — 駿武田一🥳🍤🍱🦪🍗🍒🍇😘 at 上午10:27:14
+  18. 3025 凱匯 x IVM — Drew at 上午10:03:59
+  19. 富衛 FWD 觀灣上 (IVM) - Vending Machine — 😓 at 上午10:02:04
+  20. 挪亞方舟/太陽村莊 2974 2975 2976 2977 x IVM — Michelle Lee at 上午9:49:25
+  21. 3567 3568 C0073p 朗賢峯(港鐵營運方) x IVM — Gordon at 上午7:24:59
+  22. 香港仔南寓 EV0238 AIC0056 x IVM — Ivy•_• at 上午9:40:57
+  23. 街車 YU1626 x IVM — Frankie Chen at 下午6:51:18
+  24. IVM1台-Site Visit地點相 — SherryShum at 下午6:14:35
+  25. Sierra Sea 3631 3632 3633 3636 3637 3638 3639 3640  3651 AIC0166 AIC0168 X IVM — 安東尼 at 上午9:14:49
+  26. 香港 01 HK01 3498 AIC0001 x IVM — Jacqueline at 下午5:58:09
+  27. 朗屏8 783 784 x IVM — QuancyLi at 下午9:16:46
+  28. 百老匯戲院(總群) x 果昔機 — Suet at 下午8:54:07
+  29. 2659 葵涌警署 x IVM — Yuki at 下午5:40:56
+  30. IVM x 賣機（零食飲品） — Gigi Leung at 下午4:55:54
+  31. 3192 3193 帝景園 x IVM — Derek S at 下午4:19:19
+  32. AIC0196 AIC0279 3534 3533 瑜一 x IVM — Sara🐧 at 下午3:02:26
+  33. FAIRTASTE X IVM Operation — Martin Chan at 下午3:48:26
+  34. 圓方百老滙 x 果昔 — Ida Lam at 下午3:14:33
+  35. 3369 Standard Life 標準人壽 x IVM — 🤍 at 下午1:57:34
+  36. 2820 2821 AIC0325 帝京酒店 x IVM — PMIC at 下午1:19:15
+  37. Authur vending — authur at 下午12:26:57
+  38. 3137 尖沙咀Mattel x IVM — Sa at 下午12:50:57
+  39. IVM x Aplus （活動租機） — Ada lam at 上午11:51:12
+  40. 天晉 3155 3156 3157 C0052 x IVM — Winnie at 上午11:22:38
+  41. WM Hotel 3591 3592 3593 3594 3595 X IVM — Real Real at 下午12:13:23
+  42. AIC0106 3010 3609 現崇山 x IVM — C at 上午9:25:03
+Email sent → itstaff07@ivmtech.com, info@ivmtech.com, leo@ivmtech.com, rex.leung@ivmtech.com  (messageId: <1af40a47-9c49-a897-8f83-e4932592863c@ivmtech.com>)
+Scan finished in 192.3s
+

@@ -38,6 +38,10 @@ declare global {
   var __whatsappReady: boolean | undefined;
   // eslint-disable-next-line no-var
   var __bootstrapped: boolean | undefined;
+  // Exposed so out-of-module callers (e.g. scan.ts on a detached frame) can
+  // trigger the same guarded reconnect the 'disconnected' handler uses.
+  // eslint-disable-next-line no-var
+  var __whatsappReconnect: ((reason: string) => void) | undefined;
 }
 
 export function getWhatsAppClient(): Client | undefined {
@@ -317,6 +321,10 @@ export async function bootstrap(): Promise<void> {
       }, 3 * 60 * 1000);
     }, 5000);
   }
+
+  // Let other modules request a reconnect (the 'reconnecting' guard inside
+  // makes this safe to call alongside the 'disconnected' event).
+  globalThis.__whatsappReconnect = scheduleReconnect;
 
   client.on('disconnected', (reason: string) => {
     if (readyWatchdog) { clearTimeout(readyWatchdog); readyWatchdog = null; }

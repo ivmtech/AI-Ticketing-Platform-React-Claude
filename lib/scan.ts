@@ -6,6 +6,8 @@ declare global {
   var __whatsappClient: Client | undefined;
   // eslint-disable-next-line no-var
   var __whatsappReady: boolean | undefined;
+  // eslint-disable-next-line no-var
+  var __whatsappReconnect: ((reason: string) => void) | undefined;
 }
 
 // Parse CRON_SCHEDULE (";"-separated "min hour" expressions) into sorted
@@ -121,7 +123,13 @@ export async function runScan(): Promise<void> {
     if (/detached Frame|Session closed|Target closed/i.test(msg)) {
       globalThis.__whatsappReady = false;
       state.scanMissedDueToDisconnect = true;
-      console.warn('WhatsApp page lost — waiting for client to reconnect...');
+      // A detached frame often does NOT emit a 'disconnected' event, so the
+      // client would otherwise stay stuck "not ready" forever. Actively kick
+      // off a reconnect; the handler's own guard makes this idempotent if a
+      // 'disconnected' event does fire too. The catch-up scan then runs once
+      // 'ready' fires again (scanMissedDueToDisconnect is honored there).
+      console.warn('WhatsApp page lost — triggering reconnect...');
+      globalThis.__whatsappReconnect?.('detached frame during scan');
     }
   }
 

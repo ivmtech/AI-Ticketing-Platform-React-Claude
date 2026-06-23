@@ -46,12 +46,23 @@ async function waitForReady(deadlineMs: number): Promise<void> {
 }
 
 describe.skipIf(!LIVE)('LIVE WhatsApp integration', () => {
+  let originalRecipients: string[];
+
   beforeAll(async () => {
+    // SAFETY: redirect ALL email for the whole live run so no real recipient is
+    // ever contacted — not just by test 3, but also by any catch-up runScan()
+    // the reconnect test (4) triggers. If LIVE_TEST_EMAIL is unset we fall back
+    // to an EMPTY list, which makes sendEmail() throw "no recipients" (caught by
+    // runScan) → nothing is sent.
+    originalRecipients = [...state.reportEmails];
+    state.reportEmails = process.env.LIVE_TEST_EMAIL ? [process.env.LIVE_TEST_EMAIL] : [];
+
     await bootstrap();
     await waitForReady(READY_DEADLINE_MS);
   }, READY_DEADLINE_MS + 30_000);
 
   afterAll(async () => {
+    state.reportEmails = originalRecipients;
     const client = getWhatsAppClient();
     try { await client?.destroy(); } catch { /* ignore */ }
   });
@@ -80,22 +91,15 @@ describe.skipIf(!LIVE)('LIVE WhatsApp integration', () => {
 
   // 3 ── Full pipeline: real WhatsApp → real Claude → email to TEST inbox ──────
   it('runs the full scan pipeline and emails the report to the test inbox', async () => {
-    const testInbox = process.env.LIVE_TEST_EMAIL;
-    if (!testInbox) {
+    // Recipients were already redirected to LIVE_TEST_EMAIL in beforeAll. Require
+    // it here so this test actually exercises a real send (not the empty-list path).
+    if (!process.env.LIVE_TEST_EMAIL) {
       throw new Error('Set LIVE_TEST_EMAIL=you@example.com to run the full-pipeline test safely.');
     }
 
-    // Redirect the report so real recipients are never contacted.
-    const originalRecipients = [...state.reportEmails];
-    state.reportEmails = [testInbox];
-
     const logsBefore = state.logs.length;
-    try {
-      const { runScan } = await import('@/lib/scan');
-      await runScan();
-    } finally {
-      state.reportEmails = originalRecipients;
-    }
+    const { runScan } = await import('@/lib/scan');
+    await runScan();
 
     expect(state.lastResult).not.toBeNull();
     expect(state.lastRunAt).toBeTruthy();
