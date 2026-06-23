@@ -29,6 +29,12 @@ describe('matchesKeyword', () => {
   it('detects resolved confirmations', () => {
     expect(matchesKeyword('已搞掂晒', RESOLVED_KEYWORDS)).toBe('搞掂');
   });
+
+  it('detects colleague resolution phrases (辛苦哂 / 已通知同事 / 現在ok)', () => {
+    expect(matchesKeyword('辛苦哂', RESOLVED_KEYWORDS)).toBe('辛苦哂');
+    expect(matchesKeyword('已通知同事', RESOLVED_KEYWORDS)).toBe('已通知同事');
+    expect(matchesKeyword('現在ok', RESOLVED_KEYWORDS)).toBe('現在ok');
+  });
 });
 
 describe('isColleague', () => {

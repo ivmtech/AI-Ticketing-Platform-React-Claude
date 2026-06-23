@@ -75,6 +75,19 @@ describe('formatReport', () => {
     expect(r.text).toContain('5 / 12');
   });
 
+  it('strips emoji (thumbs-up etc.) from displayed message content and summary', () => {
+    const r = formatReport({
+      resolved: [entry({ messageContent: '[Derek S] 現在ok 👍', clientSummary: '軌道32 54顯示錯誤要更新 🙏' })],
+      unresolved: [entry({ messageContent: '[客戶] 機壞咗 😡👍🏽', clientSummary: '故障 🇭🇰' })],
+      skipped: [],
+    });
+    expect(r.html).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}☀-➿]/u);
+    expect(r.text).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{1F1E6}-\u{1F1FF}☀-➿]/u);
+    // Surrounding text is preserved
+    expect(r.html).toContain('現在ok');
+    expect(r.text).toContain('機壞咗');
+  });
+
   it('highlights colleague names differently from clients', () => {
     // Sam is a colleague (COLLEAGUE_NAMES env); the agent-blue bg #e3f2fd is used.
     const r = formatReport({

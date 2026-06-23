@@ -21,6 +21,29 @@ function esc(str: string | null | undefined): string {
     .replace(/"/g, '&quot;');
 }
 
+// Display-only: strip emoji/pictographs (e.g. 👍 🙏 👌) from report text so the
+// thumbs-up and friends don't clutter the table. We DON'T touch the analyzer —
+// emojis like 👌/🙏 are still meaningful resolution signals there (CLIENT_ACK_KEYWORDS).
+// Covers pictographs, regional-indicator flags, skin-tone modifiers, ZWJ joiners,
+// variation selectors and keycap combiners.
+const EMOJI_RE =
+  /[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}\u200D\uFE0F\u20E3]/gu;
+
+function stripEmoji(str: string | null | undefined): string {
+  return String(str ?? '')
+    .replace(EMOJI_RE, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim();
+}
+
+function cleanEntry(e: ScanEntry): ScanEntry {
+  return {
+    ...e,
+    messageContent: stripEmoji(e.messageContent),
+    clientSummary: stripEmoji(e.clientSummary),
+  };
+}
+
 function highlightMsg(raw: string | null | undefined, clientName?: string | null): string {
   const text = (raw ?? '').replace('[客戶]', '[' + (clientName ?? '客戶') + ']');
   return text.replace(/\[([^\]]+)\]/g, (_match, name: string) => {
@@ -58,6 +81,10 @@ export function formatReport({
   scannedGroups,
   totalGroups,
 }: FormatInput): ReportPayload {
+  // Scrub emoji from displayed text (thumbs-up etc.) before rendering either report.
+  resolved = resolved.map(cleanEntry);
+  unresolved = unresolved.map(cleanEntry);
+
   const now = new Date();
   const dateStr =
     now.toLocaleDateString('zh-HK', {

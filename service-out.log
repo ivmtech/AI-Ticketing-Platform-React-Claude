@@ -76,3 +76,16 @@ Pending groups:
 Email sent → itstaff07@ivmtech.com, info@ivmtech.com, leo@ivmtech.com, rex.leung@ivmtech.com  (messageId: <1af40a47-9c49-a897-8f83-e4932592863c@ivmtech.com>)
 Scan finished in 192.3s
 
+▲ Next.js 16.2.9
+- Local:         http://localhost:3000
+- Network:       http://10.14.0.2:3000
+✓ Ready in 168ms
+Using Chrome at: C:\Program Files\Google\Chrome\Application\chrome.exe
+Cleared any stale WhatsApp Chrome processes before launch.
+Starting WhatsApp Group Monitor...
+WhatsApp loading: 95%
+WhatsApp authenticated. Waiting for page to finish loading...
+WhatsApp loading: 99%
+WhatsApp client ready.
+
+Scheduler active. Cron: "0 9,10,11,12,15,16,17 * * *", "30 13 * * *" (Asia/Hong_Kong)

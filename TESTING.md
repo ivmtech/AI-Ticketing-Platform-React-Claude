@@ -68,6 +68,39 @@ Without `LIVE_TESTS`, `npm run test:live` simply skips all live tests.
 3. **Pipeline** — full `runScan`: WhatsApp → Claude → email to `LIVE_TEST_EMAIL`. / 全流水線。
 4. **Reconnect** — recovers readiness after a forced disconnect. / 斷線後恢復就緒。
 
+### Run a single live test / 單獨執行某個實時測試
+Filter by name with `-t`. Only **test 3** needs `LIVE_TEST_EMAIL`.
+用 `-t` 按名稱過濾。只有 **測試 3** 需要 `LIVE_TEST_EMAIL`。
+
+**PowerShell:**
+```powershell
+# 1 — Ready / 就緒
+$env:LIVE_TESTS=1; npm run test:live -- -t "ready state"
+
+# 2 — Scrape / 抓取 (read-only / 唯讀)
+$env:LIVE_TESTS=1; npm run test:live -- -t "scrapes real groups"
+
+# 3 — Full pipeline / 全流水線 (sends email to your test inbox / 會寄到測試信箱)
+$env:LIVE_TESTS=1; $env:LIVE_TEST_EMAIL="you@example.com"; npm run test:live -- -t "full scan pipeline"
+
+# 4 — Reconnect / 重連
+$env:LIVE_TESTS=1; npm run test:live -- -t "recovers readiness"
+```
+
+**Bash / Git Bash:**
+```bash
+LIVE_TESTS=1 npm run test:live -- -t "ready state"            # 1
+LIVE_TESTS=1 npm run test:live -- -t "scrapes real groups"    # 2
+LIVE_TESTS=1 LIVE_TEST_EMAIL=you@example.com npm run test:live -- -t "full scan pipeline"  # 3
+LIVE_TESTS=1 npm run test:live -- -t "recovers readiness"     # 4
+```
+
+> **Note / 注意:** even when filtering to one test, `beforeAll` still boots Chrome
+> and connects to WhatsApp first (can take a minute+). The filter only narrows
+> which assertions run, not the connection setup.
+> 即使只過濾一個測試，`beforeAll` 仍會先啟動 Chrome 並連接 WhatsApp（可能要一分鐘以上）。
+> 過濾只縮小執行哪些斷言，不影響連接初始化。
+
 ---
 
 ## Layout / 目錄結構
