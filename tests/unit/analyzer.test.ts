@@ -10,7 +10,42 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }));
 
-import { analyzeChatBatch } from '@/lib/analyzer';
+import { analyzeChatBatch, classifyCategory } from '@/lib/analyzer';
+
+describe('classifyCategory — keyword classification', () => {
+  it('tags contract/renewal messages as 合約', () => {
+    expect(classifyCategory('Hello.我哋合約好似到30/7,繼約嗎?')).toBe('合約');
+    expect(classifyCategory('想續約')).toBe('合約');
+  });
+
+  it('tags pricing messages as 報價', () => {
+    expect(classifyCategory('呢part幾錢?')).toBe('報價');
+    expect(classifyCategory('麻煩報個價')).toBe('報價');
+  });
+
+  it('tags fault messages as 維修', () => {
+    expect(classifyCategory('部機壞咗開唔到')).toBe('維修');
+  });
+
+  it('tags complaints as 投訴', () => {
+    expect(classifyCategory('等咗好耐都未有人理')).toBe('投訴');
+  });
+
+  it('tags general questions as 查詢', () => {
+    expect(classifyCategory('請問點用?')).toBe('查詢');
+  });
+
+  it('falls back to 其他 when nothing matches and on empty input', () => {
+    expect(classifyCategory('好的收到')).toBe('其他');
+    expect(classifyCategory('')).toBe('其他');
+    expect(classifyCategory(null)).toBe('其他');
+  });
+
+  it('prefers 合約 over other matches when both appear', () => {
+    // contains both a 合約 keyword and a 報價 keyword; 合約 wins by order
+    expect(classifyCategory('續約嘅話幾錢?')).toBe('合約');
+  });
+});
 
 // Build a fake Anthropic response carrying `text` as the first content block.
 function reply(text: string) {

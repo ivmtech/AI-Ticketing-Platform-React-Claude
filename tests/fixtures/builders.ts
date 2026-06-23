@@ -1,4 +1,4 @@
-import type { EnrichedMessage, ScanEntry, Priority } from '@/lib/types';
+import type { EnrichedMessage, ScanEntry, Priority, Category } from '@/lib/types';
 
 let seq = 0;
 
@@ -35,6 +35,7 @@ export function entry(partial: Partial<ScanEntry> = {}): ScanEntry {
     clientSummary: '系統故障',
     reason: '客戶報告故障',
     priority: '中' as Priority,
+    category: '維修' as Category,
     confidence: 0.8,
     needsReview: false,
     ...partial,

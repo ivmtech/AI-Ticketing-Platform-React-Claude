@@ -4,3 +4,12 @@
   Individual fallback failed for "AIC0196 AIC0279 3534 3533 瑜一 x IVM": 429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your organization's rate limit of 5 requests per minute (org: c515692e-4f69-47e1-814a-e5eec47cf8ac, model: claude-haiku-4-5-20251001). For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Try again later. View your current limits at https://console.anthropic.com/settings/limits. You may also contact sales at https://claude.com/contact-sales to discuss your options for a rate limit increase."},"request_id":"req_011CcKRc8saCsJfidCMrdhZW"}
   Individual fallback failed for "圓方百老滙 x 果昔": 429 {"type":"error","error":{"type":"rate_limit_error","message":"This request would exceed your organization's rate limit of 5 requests per minute (org: c515692e-4f69-47e1-814a-e5eec47cf8ac, model: claude-haiku-4-5-20251001). For details, refer to: https://docs.claude.com/en/api/rate-limits. You can see the response headers for current usage. Try again later. View your current limits at https://console.anthropic.com/settings/limits. You may also contact sales at https://claude.com/contact-sales to discuss your options for a rate limit increase."},"request_id":"req_011CcKRd23LJ61Wo7MYDPXdP"}
 ⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.
+WhatsApp initialize() error: Failed to launch the browser process:  Code: 0
+
+stderr:
+
+
+TROUBLESHOOTING: https://pptr.dev/troubleshooting
+
+⚠ "next start" does not work with "output: standalone" configuration. Use "node .next/standalone/server.js" instead.

@@ -4,7 +4,7 @@ import type { Client, Chat } from 'whatsapp-web.js';
 import type { Message as WAMessage } from 'whatsapp-web.js';
 type Message = WAMessage & { _data?: { notifyName?: string } };
 import type { ScanResult, ScanEntry, SkippedEntry, EnrichedMessage } from './types';
-import { analyzeChatBatch, UNRESOLVED_KEYWORDS, HIGH_PRIORITY_KEYWORDS, RESOLVED_KEYWORDS, matchesKeyword, isColleague } from './analyzer';
+import { analyzeChatBatch, UNRESOLVED_KEYWORDS, HIGH_PRIORITY_KEYWORDS, RESOLVED_KEYWORDS, matchesKeyword, isColleague, classifyCategory } from './analyzer';
 
 const contactNameCache = new Map<string, string | null>();
 
@@ -141,6 +141,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
             clientSummary: body.length > 50 ? body.slice(0, 50) + '…' : body,
             reason: '客戶最後訊息含「' + unresolvedKw + '」且客服未回覆',
             priority: highKw ? '高' : '中',
+            category: classifyCategory(body),
             confidence: 0.95,
             needsReview: false,
           });
@@ -168,6 +169,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
             clientSummary: body.length > 50 ? body.slice(0, 50) + '…' : body,
             reason: '同事「' + colName + '」以「' + resolvedKw + '」確認完成',
             priority: '低',
+            category: classifyCategory(body),
             confidence: 0.85,
             needsReview: false,
           });
@@ -220,6 +222,9 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
         clientSummary: analysis.clientSummary,
         reason: analysis.reason,
         priority: analysis.priority ?? '中',
+        category: classifyCategory(lc.body) === '其他'
+          ? classifyCategory(analysis.clientSummary)
+          : classifyCategory(lc.body),
         confidence: analysis.confidence,
         needsReview: Boolean(analysis.needsReview),
       };

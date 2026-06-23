@@ -88,6 +88,20 @@ describe('formatReport', () => {
     expect(r.text).toContain('機壞咗');
   });
 
+  it('renders a 分類 column and drops the 狀態 column', () => {
+    const r = formatReport({
+      resolved: [],
+      unresolved: [entry({ category: '合約' })],
+      skipped: [],
+    });
+    expect(r.html).toContain('>分類<');
+    expect(r.html).not.toContain('>狀態<');
+    // category badge text is rendered
+    expect(r.html).toContain('合約');
+    // and it appears in the text report
+    expect(r.text).toContain('分類          : 合約');
+  });
+
   it('highlights colleague names differently from clients', () => {
     // Sam is a colleague (COLLEAGUE_NAMES env); the agent-blue bg #e3f2fd is used.
     const r = formatReport({

@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { Priority, EnrichedMessage, ClaudeAnalysisResult } from './types';
+import type { Priority, Category, EnrichedMessage, ClaudeAnalysisResult } from './types';
 
 let anthropic: Anthropic | undefined;
 
@@ -58,6 +58,37 @@ const CLIENT_ACK_KEYWORDS = [
   '收到', '好的', '好啊', '好呀',
   '已處理', '已解決', '已開櫃', '可以正常',
 ];
+
+// ── Category classification (keyword-only) ──────────────────────────────────
+// Each entry is tagged with exactly one 分類. We scan keyword groups IN ORDER
+// and take the first hit, so list them most-specific → most-general. '合約'
+// comes first per requirement (e.g. "我哋合約好似到30/7,繼約嗎?" → 合約).
+// Falls through to '其他' when nothing matches.
+export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }> = [
+  { category: '合約', keywords: ['合約', '續約', '繼約', '約滿', '約到期', '到期', '約到', 'renew', 'renewal'] },
+  { category: '報價', keywords: ['報價', '報個價', '幾錢', '幾多錢', '價錢', '價目', '收費', '月費', '年費', 'quote', 'quotation'] },
+  { category: '維修', keywords: ['維修', '整返', '整好', '修理', '壞咗', '壞了', '故障', '死機', '當機', '冇反應', '無反應', '開唔到', '用唔到', '冇得用', '無得用'] },
+  { category: '投訴', keywords: ['投訴', '好慢', '好耐', '等咗好耐', '好差', '唔滿意', '態度'] },
+  { category: '查詢', keywords: ['查詢', '請問', '點用', '點樣', '可唔可以', '有冇', '係咪', '想問'] },
+];
+
+// Per-category colour for the report badge (one colour each).
+export const CATEGORY_COLORS: Record<Category, string> = {
+  '合約': '#1565c0', // blue
+  '報價': '#00838f', // teal
+  '維修': '#d84315', // deep orange
+  '查詢': '#6a1b9a', // purple
+  '投訴': '#c62828', // red
+  '其他': '#757575', // grey
+};
+
+export function classifyCategory(text: string | null | undefined): Category {
+  if (!text) return '其他';
+  for (const { category, keywords } of CATEGORY_KEYWORDS) {
+    if (matchesKeyword(text, keywords)) return category;
+  }
+  return '其他';
+}
 
 export const COLLEAGUE_NAMES: string[] = (process.env.COLLEAGUE_NAMES ?? '')
   .split(',').map((s) => s.trim()).filter(Boolean);
