@@ -306,7 +306,20 @@ export async function bootstrap(): Promise<void> {
     reconnecting = true;
     console.warn(`WhatsApp reconnecting (${reason})...`);
     setTimeout(async () => {
-      try { await client.destroy(); } catch { /* ignore */ }
+      // destroy() can hang or fail when the CDP connection is already broken
+      // (e.g. a detached frame), so bound it with a timeout and don't trust it
+      // to have released the profile lock.
+      try {
+        await Promise.race([
+          client.destroy(),
+          new Promise((resolve) => setTimeout(resolve, 15000)),
+        ]);
+      } catch { /* ignore */ }
+      // A failed/partial destroy leaves an orphaned headless Chrome still
+      // holding the .wwebjs_auth lock; without clearing it, initialize() throws
+      // "The browser is already running ..." and the reconnect loop never
+      // recovers. killStaleBrowsers() only touches this project's profile.
+      killStaleBrowsers();
       try {
         await client.initialize();
       } catch (err) {
