@@ -18,6 +18,11 @@ describe('classifyCategories — keyword classification', () => {
     expect(classifyCategories('想續約')).toEqual(['合約']);
   });
 
+  it('tags agreement-signing messages as 合約', () => {
+    expect(classifyCategories('已簽Agreement')).toEqual(['合約']);
+    expect(classifyCategories('客戶要求建立帳戶觀看銷售數據及簽署協議')).toEqual(['合約']);
+  });
+
   it('tags restock / transfer / price-change messages as 補貨', () => {
     expect(classifyCategories('Hello All 聽日黎補貨，幫手報車牌，車牌：MM3348.Thanks')).toEqual(['補貨']);
     expect(classifyCategories('收到，最快明天到場地補貨 車牌確認後再send上來')).toEqual(['補貨']);
@@ -103,6 +108,24 @@ describe('analyzeChatBatch — keyword short-circuits (no Claude call)', () => {
   it('resolves via client acknowledgement keyword without calling Claude', async () => {
     const results = await analyzeChatBatch([
       { groupName: 'G', messages: [clientMsg('多謝晒')] },
+    ]);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(results[0].resolved).toBe(true);
+  });
+
+  it('resolves when a client signs off with 現在ok / 辛苦哂 / 明白', async () => {
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [clientMsg('部機壞咗'), agentMsg('幫你重啟咗'), clientMsg('現在ok')] },
+      { groupName: 'G2', messages: [agentMsg('已派人跟進'), clientMsg('辛苦哂')] },
+      { groupName: 'G3', messages: [agentMsg('要先暫停飲品貨道'), clientMsg('Ok, 明白')] },
+    ]);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(results.every((r) => r.resolved)).toBe(true);
+  });
+
+  it('resolves when a colleague offers 你可以找我', async () => {
+    const results = await analyzeChatBatch([
+      { groupName: 'G', messages: [clientMsg('合約更新及機型轉換'), agentMsg('你可以找我')] },
     ]);
     expect(createMock).not.toHaveBeenCalled();
     expect(results[0].resolved).toBe(true);

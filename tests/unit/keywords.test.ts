@@ -35,6 +35,10 @@ describe('matchesKeyword', () => {
     expect(matchesKeyword('已通知同事', RESOLVED_KEYWORDS)).toBe('已通知同事');
     expect(matchesKeyword('現在ok', RESOLVED_KEYWORDS)).toBe('現在ok');
   });
+
+  it('treats a colleague "你可以找我" offer as a resolution phrase', () => {
+    expect(matchesKeyword('你可以找我', RESOLVED_KEYWORDS)).toBe('你可以找我');
+  });
 });
 
 describe('isColleague', () => {

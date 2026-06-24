@@ -45,6 +45,7 @@ export const RESOLVED_KEYWORDS = [
   '辛苦哂', '辛苦晒',
   '已通知同事', '已通知',
   '同事黎處理', '呢2日同事黎處理', '安排同事', '同事會跟進', '同事跟進', '搵同事處理', '同事處理',
+  '你可以找我', '可以搵我', '可以找我',
 ];
 
 const CLIENT_ACK_KEYWORDS = [
@@ -57,6 +58,9 @@ const CLIENT_ACK_KEYWORDS = [
   '可以了', '可以啊', '可以的',
   '收到', '好的', '好啊', '好呀',
   '已處理', '已解決', '已開櫃', '可以正常',
+  '明白',
+  '現在ok', '而家ok', '依家ok', 'ok now', 'OK now',
+  '辛苦哂', '辛苦晒',
 ];
 
 // ── Category classification (keyword-only) ──────────────────────────────────
@@ -65,7 +69,7 @@ const CLIENT_ACK_KEYWORDS = [
 // comes first per requirement (e.g. "我哋合約好似到30/7,繼約嗎?" → 合約).
 // Falls through to '其他' when nothing matches.
 export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }> = [
-  { category: '合約', keywords: ['合約', '續約', '繼約', '約滿', '約到期', '到期', '約到', 'renew', 'renewal'] },
+  { category: '合約', keywords: ['合約', '續約', '繼約', '約滿', '約到期', '到期', '約到', 'renew', 'renewal', '協議', 'Agreement', 'agreement', '簽約', '已簽'] },
   // 補貨 covers field/stock operations: restock, transfer goods, price changes, car-plate reports.
   { category: '補貨', keywords: ['補貨', '補水', '補機', '轉貨', '調貨', '換貨', '改價', '改價錢', '改價格', '改飲品價', '修改價格', '飲品價格', '報車牌', '車牌'] },
   { category: '報價', keywords: ['報價', '報個價', '幾錢', '幾多錢', '價錢', '價目', '收費', '月費', '年費', 'quote', 'quotation'] },
