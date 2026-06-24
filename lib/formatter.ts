@@ -197,7 +197,7 @@ export function formatReport({
         '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:900px">' +
         '<thead><tr style="background:#f0f0f0">' +
         '<th style="' + TH + '">#</th>' +
-        '<th style="' + TH + '">優先級</th>' +
+        '<th style="' + TH + ';white-space:nowrap;min-width:64px">優先級</th>' +
         '<th style="' + TH + ';white-space:nowrap">分類</th>' +
         '<th style="' + TH + '">群組</th>' +
         '<th style="' + TH + ';min-width:180px">事件摘要</th>' +
