@@ -101,20 +101,54 @@ export async function bootstrap(): Promise<void> {
   // "The browser is already running for ...". Kill any such leftover Chrome
   // (matched strictly by this project's .wwebjs_auth path so the user's own
   // Chrome is never touched) before launching a fresh one.
+  //
+  // Killing the PROCESS is necessary but NOT sufficient on Windows: Chrome
+  // writes a `lockfile` into the userDataDir on launch and only deletes it on a
+  // GRACEFUL exit. A force-kill (or a crashed/detached page) leaves it behind,
+  // and puppeteer-core's launcher then keys purely on that file's existence —
+  // `existsSync(userDataDir/lockfile)` — to (re)throw "The browser is already
+  // running", with NO check that any process actually holds it. So we must also
+  // delete the stale lock files, AFTER the kill, so we never yank the lock from
+  // a live browser. See node_modules/puppeteer-core/.../node/BrowserLauncher.js.
   function killStaleBrowsers(): void {
     if (process.platform !== 'win32') return; // resolveChromePath is Windows-only anyway
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const path = require('path') as typeof import('path');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const fs = require('fs') as typeof import('fs');
+    const authDir = path.resolve('.wwebjs_auth');
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const path = require('path') as typeof import('path');
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { execSync } = require('child_process') as typeof import('child_process');
-      const authDir = path.resolve('.wwebjs_auth');
       const ps =
         `Get-CimInstance Win32_Process | ` +
         `Where-Object { $_.Name -eq 'chrome.exe' -and $_.CommandLine -like '*${authDir}*' } | ` +
         `ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`;
       execSync(`powershell -NoProfile -NonInteractive -Command "${ps}"`, { stdio: 'ignore', timeout: 15000 });
       console.log('Cleared any stale WhatsApp Chrome processes before launch.');
+    } catch {
+      // best-effort; if it fails, initialize() will surface the original error
+    }
+
+    // Remove leftover singleton lock files from every session* profile dir under
+    // .wwebjs_auth (LocalAuth uses `session` / `session-<clientId>`). Safe now
+    // that the owning process (if any) was just killed above.
+    try {
+      const entries = fs.existsSync(authDir)
+        ? fs.readdirSync(authDir, { withFileTypes: true })
+        : [];
+      let removed = 0;
+      for (const ent of entries) {
+        if (!ent.isDirectory() || !ent.name.startsWith('session')) continue;
+        for (const lock of ['lockfile', 'SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+          const p = path.join(authDir, ent.name, lock);
+          try {
+            if (fs.existsSync(p)) { fs.rmSync(p, { force: true }); removed++; }
+          } catch { /* a still-held lock can't be removed; leave it */ }
+        }
+      }
+      if (removed > 0) console.log(`Removed ${removed} stale Chrome lock file(s) before launch.`);
     } catch {
       // best-effort; if it fails, initialize() will surface the original error
     }
