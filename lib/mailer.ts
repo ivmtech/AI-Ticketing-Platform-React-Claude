@@ -35,23 +35,48 @@ export async function sendEmail({ html, text, todoCount, total }: ReportPayload)
   const time = now.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: false });
   const subject = `[WhatsApp 群組跟進報告] 待跟進 ${todoCount} / 總數 ${total} — ${date} ${time}`;
 
-  try {
-    const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
-      to: recipients.join(', '),
-      subject,
-      text,
-      html,
-    });
-    console.log(`Email sent → ${recipients.join(', ')}  (messageId: ${info.messageId})`);
-  } catch (err) {
-    const e = err as NodeJS.ErrnoException;
-    if (e.code === 'ETIMEDOUT' || e.code === 'ECONNREFUSED') {
+  // A scan can take tens of minutes (WhatsApp scrape + Claude analysis), so the
+  // report represents a lot of work. A single transient SMTP hiccup (network
+  // blip, Gmail throttling) must not discard it — retry connection-level
+  // failures with backoff before giving up.
+  const maxAttempts = 3;
+  const transientCodes = new Set(['ETIMEDOUT', 'ECONNREFUSED', 'ECONNRESET', 'ESOCKET', 'EDNS', 'EAI_AGAIN']);
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM ?? process.env.SMTP_USER,
+        to: recipients.join(', '),
+        subject,
+        text,
+        html,
+      });
+      console.log(`Email sent → ${recipients.join(', ')}  (messageId: ${info.messageId})`);
+      return;
+    } catch (err) {
+      const e = err as NodeJS.ErrnoException;
+      const transient = e.code != null && transientCodes.has(e.code);
+
+      // Non-transient errors (auth failure, bad recipient, etc.) won't get
+      // better by retrying — fail fast.
+      if (!transient) throw err;
+
+      if (attempt < maxAttempts) {
+        const waitMs = 5000 * attempt; // 5s, 10s
+        console.warn(
+          `SMTP send failed (${e.code}) on attempt ${attempt}/${maxAttempts} — retrying in ${waitMs / 1000}s...`
+        );
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+
+      // Exhausted retries: surface an accurate, actionable message.
+      const altHint = port === 465
+        ? 'Port 465 may be firewalled on this network; try SMTP_PORT=587 with SMTP_SECURE=false.'
+        : 'Try SMTP_PORT=465 with SMTP_SECURE=true.';
       throw new Error(
-        `SMTP connection failed (${process.env.SMTP_HOST}:${port}). ` +
-        `If port ${port} is blocked, try SMTP_PORT=465 with SMTP_SECURE=true in your .env.local`
+        `SMTP connection to ${process.env.SMTP_HOST}:${port} failed after ${maxAttempts} attempts (${e.code}). ${altHint}`
       );
     }
-    throw err;
   }
 }

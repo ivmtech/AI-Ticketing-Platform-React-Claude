@@ -183,7 +183,7 @@ export default function Dashboard() {
             Report Recipients · 收件人
           </p>
           <div className="flex gap-1.5">
-            <input
+            {/* <input
               type="email"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
@@ -196,7 +196,7 @@ export default function Dashboard() {
               className="bg-[#3b82f6] hover:bg-[#2563eb] text-white rounded-md px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors"
             >
               Add
-            </button>
+            </button> */}
           </div>
           <div className="mt-2 flex flex-col gap-1.5">
             {emails.map((e) => (
@@ -205,13 +205,13 @@ export default function Dashboard() {
                 className="flex items-center justify-between bg-[#080d17] border border-[#374151] rounded-md px-2.5 py-1.5"
               >
                 <span className="text-xs">{e}</span>
-                <button
+                {/* <button
                   onClick={() => removeEmail(e)}
                   className="text-[#9ca3af] hover:text-[#ef4444] text-base leading-none transition-colors px-0.5"
                   title="Remove"
                 >
                   ✕
-                </button>
+                </button> */}
               </div>
             ))}
           </div>
