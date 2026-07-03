@@ -12,6 +12,10 @@ vi.mock('@anthropic-ai/sdk', () => ({
 
 import { analyzeChatBatch, classifyCategories } from '@/lib/analyzer';
 
+// No throttling between fallback calls in unit tests (production default 13s
+// keeps under the org's 5 requests/minute limit).
+process.env.FALLBACK_DELAY_MS = '0';
+
 describe('classifyCategories — keyword classification', () => {
   it('tags contract/renewal messages as 合約', () => {
     expect(classifyCategories('Hello.我哋合約好似到30/7,繼約嗎?')).toEqual(['合約']);
@@ -187,6 +191,46 @@ describe('analyzeChatBatch — resilience', () => {
     ]);
     expect(createMock).toHaveBeenCalledTimes(2); // batch + 1 individual
     expect(results[0].resolved).toBe(true);
+  });
+
+  it('matches batch results by idx even when the array is out of order', async () => {
+    createMock.mockResolvedValueOnce(
+      batchReply([
+        { idx: 1, resolved: false, clientSummary: 'B', reason: 'r', priority: '中', confidence: 0.9 },
+        { idx: 0, resolved: true, clientSummary: 'A', reason: 'r', priority: '中', confidence: 0.9 },
+      ])
+    );
+
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [clientMsg('問題一'), agentMsg('睇緊')] },
+      { groupName: 'G2', messages: [clientMsg('問題二'), agentMsg('睇緊')] },
+    ]);
+    expect(createMock).toHaveBeenCalledTimes(1); // no fallback needed
+    expect(results[0].clientSummary).toBe('A');
+    expect(results[0].resolved).toBe(true);
+    expect(results[1].clientSummary).toBe('B');
+    expect(results[1].resolved).toBe(false);
+  });
+
+  it('keeps good idx-tagged results and only re-runs the group the batch skipped', async () => {
+    createMock
+      .mockResolvedValueOnce(
+        batchReply([
+          // idx 0 missing — Claude skipped a group
+          { idx: 1, resolved: true, clientSummary: 'B', reason: 'r', priority: '中', confidence: 0.9 },
+        ])
+      )
+      .mockResolvedValueOnce(reply('{"resolved": false, "clientSummary": "A", "reason": "r", "priority": "中", "confidence": 0.8}'));
+
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [clientMsg('問題一'), agentMsg('睇緊')] },
+      { groupName: 'G2', messages: [clientMsg('問題二'), agentMsg('睇緊')] },
+    ]);
+    expect(createMock).toHaveBeenCalledTimes(2); // batch + only the missing group
+    expect(results[0].clientSummary).toBe('A');
+    expect(results[0].resolved).toBe(false);
+    expect(results[1].clientSummary).toBe('B');
+    expect(results[1].resolved).toBe(true);
   });
 
   it('falls back when the batch array length does not match item count', async () => {

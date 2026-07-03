@@ -192,9 +192,50 @@ function buildBatchPrompt(prepared: Array<{ groupName: string; transcript: strin
     '',
     sections,
     '',
-    'Respond with ONLY a valid JSON array of ' + prepared.length + ' objects in the same order as the groups above (no markdown, no extra text):',
-    '[{"resolved": true, "clientSummary": "...", "reason": "...", "priority": "中", "confidence": 0.9}, ...]',
+    'Respond with ONLY a valid JSON array (no markdown, no extra text) of exactly ' + prepared.length + ' objects — one per group, do not skip or merge groups. Each object MUST include "idx", the GROUP number it answers for:',
+    '[{"idx": 0, "resolved": true, "clientSummary": "...", "reason": "...", "priority": "中", "confidence": 0.9}, ...]',
   ].join('\n');
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// Analyze a single group, retrying on 429 (honouring retry-after) — the org
+// quota is only ~5 requests/minute, so a rejected call usually succeeds after
+// the window resets.
+async function analyzeOne(
+  model: string,
+  groupName: string,
+  transcript: string
+): Promise<Record<string, unknown> | null> {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const resp = await getClient().messages.create({
+        model,
+        max_tokens: 400,
+        messages: [{ role: 'user', content: buildPrompt(groupName, transcript) }],
+      });
+      const txt = ((resp.content[0] as { text?: string })?.text ?? '').trim();
+      const m = txt.match(/\{[\s\S]*\}/);
+      if (!m) throw new Error('No JSON in response');
+      return JSON.parse(m[0]) as Record<string, unknown>;
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      if (status === 429 && attempt < MAX_ATTEMPTS) {
+        const h = (err as { headers?: { get?: (name: string) => string | null } & Record<string, string> }).headers;
+        const retryAfter = Number(typeof h?.get === 'function' ? h.get('retry-after') : h?.['retry-after']);
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 60_000;
+        console.warn('  Rate limited analyzing "' + groupName + '"; waiting ' + Math.round(waitMs / 1000) + 's (attempt ' + attempt + '/' + MAX_ATTEMPTS + ')');
+        await sleep(waitMs);
+        continue;
+      }
+      console.warn('  Individual analysis failed for "' + groupName + '": ' + (err as Error).message);
+      return null;
+    }
+  }
+  return null;
 }
 
 export async function analyzeChatBatch(
@@ -269,39 +310,44 @@ async function _analyzeBatchChunk(
       if (!jsonMatch) throw new Error('No JSON array in response');
 
       const parsed = JSON.parse(jsonMatch[0]) as unknown[];
-      if (!Array.isArray(parsed) || parsed.length !== claudeItems.length) {
-        throw new Error('Array length mismatch: expected ' + claudeItems.length + ', got ' + (Array.isArray(parsed) ? parsed.length : 'non-array'));
-      }
+      if (!Array.isArray(parsed)) throw new Error('Response is not an array');
 
-      needsClaudeIdx.forEach((origIdx, ci) => {
-        claudeResultMap[origIdx] = parsed[ci] as Record<string, unknown>;
-      });
-    } catch (err) {
-      console.warn('  Batch Claude analysis failed (' + (err as Error).message + '). Falling back to individual calls...');
-      const fallbackQueue = [...needsClaudeIdx];
+      const hasIdx = parsed.length > 0 && parsed.every(
+        (o) => o != null && typeof o === 'object' && Number.isInteger((o as { idx?: unknown }).idx)
+      );
 
-      async function fallbackWorker() {
-        while (fallbackQueue.length > 0) {
-          const origIdx = fallbackQueue.shift();
-          if (origIdx == null) return;
-          const { groupName, transcript } = prepared[origIdx];
-          try {
-            const resp = await getClient().messages.create({
-              model,
-              max_tokens: 400,
-              messages: [{ role: 'user', content: buildPrompt(groupName, transcript) }],
-            });
-            const txt = ((resp.content[0] as { text?: string })?.text ?? '').trim();
-            const m = txt.match(/\{[\s\S]*\}/);
-            if (!m) throw new Error('No JSON in response');
-            claudeResultMap[origIdx] = JSON.parse(m[0]) as Record<string, unknown>;
-          } catch (indErr) {
-            console.warn('  Individual fallback failed for "' + groupName + '": ' + (indErr as Error).message);
-            claudeResultMap[origIdx] = null;
+      if (hasIdx) {
+        // Match each result to its group via the echoed "idx", so one skipped
+        // group no longer invalidates the rest of the batch.
+        for (const o of parsed) {
+          const origIdx = needsClaudeIdx[(o as { idx: number }).idx];
+          if (origIdx !== undefined && claudeResultMap[origIdx] === undefined) {
+            claudeResultMap[origIdx] = o as Record<string, unknown>;
           }
         }
+      } else if (parsed.length === claudeItems.length) {
+        needsClaudeIdx.forEach((origIdx, ci) => {
+          claudeResultMap[origIdx] = parsed[ci] as Record<string, unknown>;
+        });
+      } else {
+        throw new Error('Array length mismatch: expected ' + claudeItems.length + ', got ' + parsed.length + ', and objects carry no "idx" to match by');
       }
-      await Promise.all([fallbackWorker(), fallbackWorker(), fallbackWorker()]);
+    } catch (err) {
+      console.warn('  Batch Claude analysis failed (' + (err as Error).message + '). Falling back to individual calls...');
+    }
+
+    // Re-run whatever the batch didn't cover, one request at a time with a
+    // pause in between — the org allows ~5 requests/minute, so a concurrent
+    // burst here just turns into a wall of 429s.
+    const missing = needsClaudeIdx.filter((origIdx) => claudeResultMap[origIdx] === undefined);
+    if (missing.length > 0 && missing.length < needsClaudeIdx.length) {
+      console.warn('  Batch response missing ' + missing.length + ' group(s); re-running those individually...');
+    }
+    const delayMs = parseInt(process.env.FALLBACK_DELAY_MS ?? '13000', 10);
+    for (let i = 0; i < missing.length; i++) {
+      if (i > 0) await sleep(delayMs);
+      const { groupName, transcript } = prepared[missing[i]];
+      claudeResultMap[missing[i]] = await analyzeOne(model, groupName, transcript);
     }
   }
 
