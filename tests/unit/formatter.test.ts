@@ -7,7 +7,7 @@ describe('formatReport', () => {
     const r = formatReport({
       resolved: [entry({ groupName: 'A' }), entry({ groupName: 'B' })],
       unresolved: [entry({ groupName: 'C' })],
-      skipped: [{ groupName: 'D', reason: '過去48小時無訊息' }],
+      skipped: [{ groupName: 'D', reason: '過去7日無客戶訊息' }],
     });
     expect(r.total).toBe(4);
     expect(r.todoCount).toBe(1);

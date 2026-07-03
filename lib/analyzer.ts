@@ -54,7 +54,7 @@ const CLIENT_ACK_KEYWORDS = [
   '搞掂', '解決咗', '搞好咗', '搞好了',
   'okok', 'ok ok',
   '唔該', '唔該晒',
-  '👌', '🙏',
+  '👌', '🙏', '👍', '👏',
   '可以了', '可以啊', '可以的',
   '收到', '好的', '好啊', '好呀',
   '已處理', '已解決', '已開櫃', '可以正常',
@@ -70,6 +70,9 @@ const CLIENT_ACK_KEYWORDS = [
 // Falls through to '其他' when nothing matches.
 export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }> = [
   { category: '合約', keywords: ['合約', '續約', '繼約', '約滿', '約到期', '到期', '約到', 'renew', 'renewal', '協議', 'Agreement', 'agreement', '簽約', '已簽'] },
+  // 機器: temporary keywords, to be refined later. '改*機' uses the wildcard
+  // (see matchesKeyword) so it covers 改咖啡機價錢, 改飲品機圖片, etc.
+  { category: '機器', keywords: ['改價錢', '改圖', '改*機'] },
   // 補貨 covers field/stock operations: restock, transfer goods, price changes, car-plate reports.
   { category: '補貨', keywords: ['補貨', '補水', '補機', '轉貨', '調貨', '換貨', '改價', '改價錢', '改價格', '改飲品價', '修改價格', '飲品價格', '報車牌', '車牌'] },
   { category: '報價', keywords: ['報價', '報個價', '幾錢', '幾多錢', '價錢', '價目', '收費', '月費', '年費', 'quote', 'quotation'] },
@@ -82,6 +85,7 @@ export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }
 // request, so it needs dark text for contrast; the rest are solid + white text.
 export const CATEGORY_COLORS: Record<Category, { bg: string; fg: string }> = {
   '合約': { bg: '#fbc02d', fg: '#4a3b00' }, // yellow / dark text
+  '機器': { bg: '#2e7d32', fg: '#ffffff' }, // green
   '補貨': { bg: '#1565c0', fg: '#ffffff' }, // blue
   '報價': { bg: '#00838f', fg: '#ffffff' }, // teal
   '維修': { bg: '#d84315', fg: '#ffffff' }, // deep orange
@@ -115,10 +119,22 @@ function isAgentMsg(msg: EnrichedMessage): boolean {
   return msg.fromMe === true || isColleague(msg.senderName);
 }
 
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// A keyword may contain '*' as a wildcard for any run of characters (including
+// none), e.g. '改*機' matches 改咖啡機價錢 / 改售賣機圖片. Plain keywords are
+// substring matches as before.
 export function matchesKeyword(text: string | null | undefined, keywords: string[]): string | null {
   if (!text) return null;
   for (const kw of keywords) {
-    if (text.includes(kw)) return kw;
+    if (kw.includes('*')) {
+      const re = new RegExp(kw.split('*').map(escapeRegExp).join('[\\s\\S]*'));
+      if (re.test(text)) return kw;
+    } else if (text.includes(kw)) {
+      return kw;
+    }
   }
   return null;
 }

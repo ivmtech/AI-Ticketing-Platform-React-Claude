@@ -39,6 +39,14 @@ describe('matchesKeyword', () => {
   it('treats a colleague "你可以找我" offer as a resolution phrase', () => {
     expect(matchesKeyword('你可以找我', RESOLVED_KEYWORDS)).toBe('你可以找我');
   });
+
+  it('supports * wildcard keywords spanning arbitrary text', () => {
+    expect(matchesKeyword('改咖啡機價錢', ['改*機'])).toBe('改*機');
+    expect(matchesKeyword('改飲品機圖片', ['改*機'])).toBe('改*機');
+    expect(matchesKeyword('改機', ['改*機'])).toBe('改*機'); // wildcard may match empty
+    expect(matchesKeyword('部機要改嘢', ['改*機'])).toBeNull(); // order matters: 機 before 改
+    expect(matchesKeyword('咖啡機壞咗', ['改*機'])).toBeNull(); // no 改 at all
+  });
 });
 
 describe('isColleague', () => {

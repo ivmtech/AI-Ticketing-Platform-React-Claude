@@ -2,7 +2,7 @@ export type Priority = '高' | '中' | '低';
 
 // Ticket category. Keyword-classified (see classifyCategories in analyzer.ts).
 // An entry can match several categories; '其他' is the fallback when none match.
-export type Category = '合約' | '補貨' | '報價' | '維修' | '查詢' | '投訴' | '其他';
+export type Category = '合約' | '機器' | '補貨' | '報價' | '維修' | '查詢' | '投訴' | '其他';
 
 export interface ScanEntry {
   groupName: string;
