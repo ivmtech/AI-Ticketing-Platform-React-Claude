@@ -309,6 +309,31 @@ export async function bootstrap(): Promise<void> {
           { timezone: tz }
         );
       }
+
+      // Self-heal watchdog. node-cron occasionally DROPS a scheduled tick — it
+      // logs "missed execution ... Possible blocking IO or high CPU" and does
+      // NOT replay the slot, so a scheduled scan is silently skipped (observed
+      // for the 17:00 slot on 2026-06-25). A plain setInterval is immune to
+      // that internal scheduling logic, so use it as a backstop: once a minute,
+      // if a scheduled slot has elapsed since our last run and we're idle and
+      // ready, run the missed scan. This mirrors the reconnect catch-up check
+      // below (lastScheduledRun() > lastRunAt). The `>` comparison means a slot
+      // the cron DID fire (lastRunAt ≈ slot time) won't be re-run, and a manual
+      // "Run Now" or a later catch-up won't double-fire either.
+      const HEARTBEAT_MS = 60 * 1000;
+      setInterval(() => {
+        if (!isWhatsAppReady() || state.isRunning || !state.lastRunAt) return;
+        import('./scan').then(({ runScan, lastScheduledRun }) => {
+          const lastSlot = lastScheduledRun().getTime();
+          const lastRun = new Date(state.lastRunAt!).getTime();
+          if (lastSlot > lastRun) {
+            console.warn(
+              `Self-heal: scheduled slot at ${new Date(lastSlot).toLocaleString()} was missed by cron — running catch-up scan...`
+            );
+            runScan();
+          }
+        });
+      }, HEARTBEAT_MS);
     } else {
       // Reconnected. Decide whether to run a catch-up scan, because either:
       //  (a) a tick fired while we were down (scanMissedDueToDisconnect), or
