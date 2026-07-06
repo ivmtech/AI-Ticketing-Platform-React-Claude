@@ -72,9 +72,9 @@ export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }
   { category: '合約', keywords: ['合約', '續約', '繼約', '約滿', '約到期', '到期', '約到', 'renew', 'renewal', '協議', 'Agreement', 'agreement', '簽約', '已簽'] },
   // 機器: temporary keywords, to be refined later. '改*機' uses the wildcard
   // (see matchesKeyword) so it covers 改咖啡機價錢, 改飲品機圖片, etc.
-  { category: '機器', keywords: ['改價錢', '改圖', '改*機'] },
+  { category: '機器', keywords: ['改價錢', '改圖', '改*機', '改價', '改價錢', '改價格', '改飲品價', '修改價格', '飲品價格'] },
   // 補貨 covers field/stock operations: restock, transfer goods, price changes, car-plate reports.
-  { category: '補貨', keywords: ['補貨', '補水', '補機', '轉貨', '調貨', '換貨', '改價', '改價錢', '改價格', '改飲品價', '修改價格', '飲品價格', '報車牌', '車牌'] },
+  { category: '補貨', keywords: ['補貨', '補水', '補機', '轉貨', '調貨', '換貨', '報車牌', '車牌'] },
   { category: '報價', keywords: ['報價', '報個價', '幾錢', '幾多錢', '價錢', '價目', '收費', '月費', '年費', 'quote', 'quotation'] },
   { category: '維修', keywords: ['維修', '整返', '整好', '修理', '壞咗', '壞了', '故障', '死機', '當機', '冇反應', '無反應', '開唔到', '用唔到', '冇得用', '無得用'] },
   { category: '投訴', keywords: ['投訴', '好慢', '好耐', '等咗好耐', '好差', '唔滿意', '態度'] },
