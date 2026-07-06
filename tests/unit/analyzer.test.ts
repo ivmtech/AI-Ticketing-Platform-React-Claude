@@ -35,7 +35,6 @@ describe('classifyCategories — keyword classification', () => {
     expect(classifyCategories('麻煩轉貨去另一部機')).toEqual(['補貨']);
   });
 
-    expect(classifyCategories('改售賣機圖片')).toEqual(['機器']);
   it('tags machine-modification messages as 機器設定 (incl. 改*機 wildcard)', () => {
     expect(classifyCategories('麻煩改圖')).toEqual(['機器設定']);
     expect(classifyCategories('改售賣機圖片')).toEqual(['機器設定']);
