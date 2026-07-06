@@ -62,7 +62,9 @@ interface ScrapeOptions {
 
 export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions = {}): Promise<ScanResult> {
   const now = new Date();
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  // How far back to scan, in hours. Default 168h (= 7 days).
+  const LOOKBACK_HOURS = Math.max(1, parseInt(process.env.SCAN_LOOKBACK_HOURS ?? '168'));
+  const cutoff = new Date(now.getTime() - LOOKBACK_HOURS * 60 * 60 * 1000);
 
   const MSG_LIMIT = parseInt(process.env.MESSAGE_HISTORY_LIMIT ?? '10');
   const CONCURRENCY = Math.max(1, parseInt(process.env.SCAN_CONCURRENCY ?? '5'));
@@ -70,7 +72,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
   const chats: Chat[] = await client.getChats();
   const groups = chats.filter((c) => c.isGroup);
   console.log(
-    'Found ' + groups.length + ' group(s). Scanning last 7 days' +
+    'Found ' + groups.length + ' group(s). Scanning last ' + LOOKBACK_HOURS + 'h' +
     ' (concurrency=' + CONCURRENCY + ', msg_limit=' + MSG_LIMIT + ')...'
   );
   if (onProgress) onProgress(0, groups.length);
@@ -96,12 +98,12 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
         const messages: Message[] = await group.fetchMessages({ limit: MSG_LIMIT });
 
         const recent = messages
-          .filter((m) => m.timestamp * 1000 >= sevenDaysAgo.getTime())
+          .filter((m) => m.timestamp * 1000 >= cutoff.getTime())
           .sort((a, b) => a.timestamp - b.timestamp);
 
         const rawClientMsgs = recent.filter((m) => !m.fromMe && m.body);
         if (rawClientMsgs.length === 0) {
-          skipped.push({ groupName: group.name, reason: '過去7日無客戶訊息' });
+          skipped.push({ groupName: group.name, reason: '過去' + LOOKBACK_HOURS + '小時無客戶訊息' });
           continue;
         }
 

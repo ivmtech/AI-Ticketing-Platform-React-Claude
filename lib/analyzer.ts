@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import type { Priority, Category, EnrichedMessage, ClaudeAnalysisResult } from './types';
+import keywords from '@/config/keywords.json';
 
 let anthropic: Anthropic | undefined;
 
@@ -13,86 +14,34 @@ function getClient(): Anthropic {
   return anthropic;
 }
 
+// All keyword/category/colour data now lives in config/keywords.json so it can
+// be tuned without touching code. The constants below just re-export it with
+// the right types, keeping every existing import path unchanged.
+
 // Keyword pre-screen: if the LAST client message clearly signals an
 // unresolved issue, we skip the LLM call entirely and route to 待跟進.
-export const UNRESOLVED_KEYWORDS = [
-  '？', '?',
-  '點搞', '點算', '咩事', '咩情況', '搞唔掂', '搞唔到',
-  '壞咗', '壞了', '故障', '死機', '當機', '冇反應', '無反應',
-  '緊急', '即刻', '快啲', 'ASAP', 'asap', 'urgent', 'URGENT',
-  '幫手', '幫幫手', '救命',
-  '未得', '唔得', '仲未', '仲係', '依然',
-  '幾時', '何時',
-];
+export const UNRESOLVED_KEYWORDS: string[] = keywords.unresolved;
 
-export const HIGH_PRIORITY_KEYWORDS = [
-  '緊急', '即刻', 'ASAP', 'asap', 'urgent', 'URGENT',
-  '死機', '當機', '壞咗', '故障', '冇得用', '無得用', '完全用唔到',
-  '救命', '幫幫手',
-];
+export const HIGH_PRIORITY_KEYWORDS: string[] = keywords.highPriority;
 
-export const RESOLVED_KEYWORDS = [
-  '搞掂', '已搞掂', '搞好咗', '搞好了', '搞好',
-  '已完成', '完成', '妥', '搞定',
-  '已處理', '已跟進', '已安排', '已解決',
-  'OK', 'Done', 'DONE',
-  '冇問題', '無問題', '沒問題',
-  'thanks', 'thx', 'Thx', 'Thanks',
-  '已更換', '已換', '換過', '已轉換', '已转換', '已转换',
-  '已送', '已包邊', '已連接', '已连接',
-  '可正常使用', 'ok now', '現在ok', '而家ok', '依家ok',
-  '成功',
-  '辛苦哂', '辛苦晒',
-  '已通知同事', '已通知',
-  '同事黎處理', '呢2日同事黎處理', '安排同事', '同事會跟進', '同事跟進', '搵同事處理', '同事處理',
-  '你可以找我', '可以搵我', '可以找我',
-];
+export const RESOLVED_KEYWORDS: string[] = keywords.resolved;
 
-const CLIENT_ACK_KEYWORDS = [
-  '謝謝', '多謝', '感謝', 'thanks', 'Thanks', 'Thx', 'thz', 'Thz', 'thank you', 'Thank you', 'thx', 'THX',
-  '唔使', '唔需要', '不用了', '算了', '算啦', '冇事', '無事', '唔緊要', '不緊要',
-  '搞掂', '解決咗', '搞好咗', '搞好了',
-  'okok', 'ok ok',
-  '唔該', '唔該晒',
-  '👌', '🙏', '👍', '👏',
-  '可以了', '可以啊', '可以的',
-  '收到', '好的', '好啊', '好呀',
-  '已處理', '已解決', '已開櫃', '可以正常',
-  '明白',
-  '現在ok', '而家ok', '依家ok', 'ok now', 'OK now',
-  '辛苦哂', '辛苦晒',
-];
+const CLIENT_ACK_KEYWORDS: string[] = keywords.clientAck;
 
 // ── Category classification (keyword-only) ──────────────────────────────────
 // Each entry is tagged with exactly one 分類. We scan keyword groups IN ORDER
-// and take the first hit, so list them most-specific → most-general. '合約'
-// comes first per requirement (e.g. "我哋合約好似到30/7,繼約嗎?" → 合約).
-// Falls through to '其他' when nothing matches.
-export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }> = [
-  { category: '合約', keywords: ['合約', '續約', '繼約', '約滿', '約到期', '到期', '約到', 'renew', 'renewal', '協議', 'Agreement', 'agreement', '簽約', '已簽'] },
-  // 機器設定: temporary keywords, to be refined later. '改*機' uses the wildcard
-  // (see matchesKeyword) so it covers 改咖啡機價錢, 改飲品機圖片, etc.
-  { category: '機器設定', keywords: ['改價錢', '改圖', '改*機', '改價', '改價錢', '改價格', '改飲品價', '修改價格', '飲品價格'] },
-  // 補貨 covers field/stock operations: restock, transfer goods, price changes, car-plate reports.
-  { category: '補貨', keywords: ['補貨', '補水', '補機', '轉貨', '調貨', '換貨', '報車牌', '車牌'] },
-  { category: '報價', keywords: ['報價', '報個價', '幾錢', '幾多錢', '價錢', '價目', '收費', '月費', '年費', 'quote', 'quotation'] },
-  { category: '維修', keywords: ['維修', '整返', '整好', '修理', '壞咗', '壞了', '故障', '死機', '當機', '冇反應', '無反應', '開唔到', '用唔到', '冇得用', '無得用'] },
-  { category: '投訴', keywords: ['投訴', '好慢', '好耐', '等咗好耐', '好差', '唔滿意', '態度'] },
-  { category: '查詢', keywords: ['查詢', '請問', '點用', '點樣', '可唔可以', '有冇', '係咪', '想問'] },
-];
+// (as listed in config/keywords.json) and take the first hit, so they are
+// ordered most-specific → most-general. '合約' comes first per requirement
+// (e.g. "我哋合約好似到30/7,繼約嗎?" → 合約). Falls through to '其他' when nothing
+// matches. Note: '機器設定' keywords use the '改*機' wildcard (see matchesKeyword)
+// so they cover 改咖啡機價錢, 改飲品機圖片, etc.
+export const CATEGORY_KEYWORDS: Array<{ category: Category; keywords: string[] }> =
+  keywords.categories as Array<{ category: Category; keywords: string[] }>;
 
 // Per-category badge colours. bg = background, fg = text. 合約 is yellow per
 // request, so it needs dark text for contrast; the rest are solid + white text.
-export const CATEGORY_COLORS: Record<Category, { bg: string; fg: string }> = {
-  '合約': { bg: '#fbc02d', fg: '#4a3b00' }, // yellow / dark text
-  '機器設定': { bg: '#2e7d32', fg: '#ffffff' }, // green
-  '補貨': { bg: '#1565c0', fg: '#ffffff' }, // blue
-  '報價': { bg: '#00838f', fg: '#ffffff' }, // teal
-  '維修': { bg: '#d84315', fg: '#ffffff' }, // deep orange
-  '查詢': { bg: '#6a1b9a', fg: '#ffffff' }, // purple
-  '投訴': { bg: '#c62828', fg: '#ffffff' }, // red
-  '其他': { bg: '#757575', fg: '#ffffff' }, // grey
-};
+export const CATEGORY_COLORS: Record<Category, { bg: string; fg: string }> =
+  keywords.categoryColors as Record<Category, { bg: string; fg: string }>;
 
 // Returns EVERY category whose keywords appear in the text (in the order they
 // are defined above, so 合約 leads). An entry can therefore carry multiple
