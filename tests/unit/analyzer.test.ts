@@ -30,16 +30,17 @@ describe('classifyCategories — keyword classification', () => {
   it('tags restock / transfer / price-change messages as 補貨', () => {
     expect(classifyCategories('Hello All 聽日黎補貨，幫手報車牌，車牌：MM3348.Thanks')).toEqual(['補貨']);
     expect(classifyCategories('收到，最快明天到場地補貨 車牌確認後再send上來')).toEqual(['補貨']);
-    // 修改機器 also hits the 機器 wildcard 改*機, so both badges apply
-    expect(classifyCategories('要求修改機器內飲品價格')).toEqual(['機器', '補貨']);
+    // 修改機器 also hits the 機器設定 wildcard 改*機, so both badges apply
+    expect(classifyCategories('要求修改機器內飲品價格')).toEqual(['機器設定', '補貨']);
     expect(classifyCategories('麻煩轉貨去另一部機')).toEqual(['補貨']);
   });
 
-  it('tags machine-modification messages as 機器 (incl. 改*機 wildcard)', () => {
-    expect(classifyCategories('麻煩改圖')).toEqual(['機器']);
     expect(classifyCategories('改售賣機圖片')).toEqual(['機器']);
-    // 價錢 also hits 報價 → both badges, 機器 first
-    expect(classifyCategories('改咖啡機價錢')).toEqual(['機器', '報價']);
+  it('tags machine-modification messages as 機器設定 (incl. 改*機 wildcard)', () => {
+    expect(classifyCategories('麻煩改圖')).toEqual(['機器設定']);
+    expect(classifyCategories('改售賣機圖片')).toEqual(['機器設定']);
+    // 價錢 also hits 報價 → both badges, 機器設定 first
+    expect(classifyCategories('改咖啡機價錢')).toEqual(['機器設定', '報價']);
   });
 
   it('tags pricing messages as 報價', () => {
@@ -69,8 +70,8 @@ describe('classifyCategories — keyword classification', () => {
     // contains a 合約 keyword AND a 報價 keyword → both badges, 合約 first
     expect(classifyCategories('續約嘅話幾錢?')).toEqual(['合約', '報價']);
     // restock + fault
-    expect(classifyCategories('部機壞咗，順便補貨')).toEqual(['補貨', '維修']);
   });
+    expect(classifyCategories('部機壞咗，順便補貨')).toEqual(['補貨', '維修']);
 });
 
 // Build a fake Anthropic response carrying `text` as the first content block.
