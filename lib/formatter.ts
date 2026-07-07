@@ -110,7 +110,10 @@ export function formatReport({
     now.toLocaleTimeString('zh-HK', { hour: '2-digit', minute: '2-digit', hour12: true });
 
   const priorityOrder: Record<Priority, number> = { '高': 0, '中': 1, '低': 2 };
+  const dateKey = (d: Date) => d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
   const sortedPending = [...unresolved].sort((a, b) => {
+    const da = dateKey(a.timestamp) - dateKey(b.timestamp);
+    if (da !== 0) return da;
     const pa = priorityOrder[a.priority] ?? 1;
     const pb = priorityOrder[b.priority] ?? 1;
     if (pa !== pb) return pa - pb;

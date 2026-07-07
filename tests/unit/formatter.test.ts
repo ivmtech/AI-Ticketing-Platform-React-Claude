@@ -28,7 +28,7 @@ describe('formatReport', () => {
     expect(r.html).toContain('&quot;');
   });
 
-  it('sorts pending entries by priority 高 → 中 → 低', () => {
+  it('sorts pending entries by priority 高 → 中 → 低 when on the same date', () => {
     const r = formatReport({
       resolved: [],
       unresolved: [
@@ -43,6 +43,34 @@ describe('formatReport', () => {
     const iLow = r.text.indexOf('LOW');
     expect(iHigh).toBeLessThan(iMid);
     expect(iMid).toBeLessThan(iLow);
+  });
+
+  it('sorts pending entries by date (oldest → newest) before priority', () => {
+    const r = formatReport({
+      resolved: [],
+      unresolved: [
+        entry({ groupName: 'NEWER-HIGH', priority: '高', timestamp: new Date('2026-06-23T09:00:00+08:00') }),
+        entry({ groupName: 'OLDER-LOW', priority: '低', timestamp: new Date('2026-06-22T09:00:00+08:00') }),
+      ],
+      skipped: [],
+    });
+    const iOlderLow = r.text.indexOf('OLDER-LOW');
+    const iNewerHigh = r.text.indexOf('NEWER-HIGH');
+    expect(iOlderLow).toBeLessThan(iNewerHigh);
+  });
+
+  it('ignores time-of-day when comparing dates, so priority still decides same-day ordering', () => {
+    const r = formatReport({
+      resolved: [],
+      unresolved: [
+        entry({ groupName: 'LATE-HIGH', priority: '高', timestamp: new Date('2026-06-22T22:00:00+08:00') }),
+        entry({ groupName: 'EARLY-LOW', priority: '低', timestamp: new Date('2026-06-22T01:00:00+08:00') }),
+      ],
+      skipped: [],
+    });
+    const iLateHigh = r.text.indexOf('LATE-HIGH');
+    const iEarlyLow = r.text.indexOf('EARLY-LOW');
+    expect(iLateHigh).toBeLessThan(iEarlyLow);
   });
 
   it('renders the manual-review badge when needsReview is set', () => {
