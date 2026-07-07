@@ -46,12 +46,15 @@ function cleanEntry(e: ScanEntry): ScanEntry {
 
 function highlightMsg(raw: string | null | undefined, clientName?: string | null): string {
   const text = (raw ?? '').replace('[客戶]', '[' + (clientName ?? '客戶') + ']');
-  return text.replace(/\[([^\]]+)\]/g, (_match, name: string) => {
+  let textColor: string | null = null;
+  const highlighted = text.replace(/\[([^\]]+)\]/g, (_match, name: string) => {
     const isAgent = isColleague(name);
     const bg = isAgent ? '#e3f2fd' : '#fff3e0';
     const color = isAgent ? '#1565c0' : '#e65100';
+    if (textColor === null) textColor = color;
     return '<span style="background:' + bg + ';color:' + color + ';padding:1px 5px;border-radius:3px;font-weight:600;white-space:nowrap">[' + esc(name) + ']</span>';
   });
+  return textColor === null ? highlighted : '<span style="color:' + textColor + '">' + highlighted + '</span>';
 }
 
 function statCard(label: string, value: number, color: string): string {
