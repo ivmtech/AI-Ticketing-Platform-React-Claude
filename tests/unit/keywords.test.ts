@@ -40,6 +40,11 @@ describe('matchesKeyword', () => {
     expect(matchesKeyword('你可以找我', RESOLVED_KEYWORDS)).toBe('你可以找我');
   });
 
+  it('treats a colleague dispatch confirmation (將會安排 / 已派期 / 師傅到場) as resolved', () => {
+    expect(matchesKeyword('收到. 將會安排更換火牛', RESOLVED_KEYWORDS)).toBe('將會安排');
+    expect(matchesKeyword('已派期會有師傅到場處理', RESOLVED_KEYWORDS)).toBe('已派期');
+  });
+
   it('supports * wildcard keywords spanning arbitrary text', () => {
     expect(matchesKeyword('改咖啡機價錢', ['改*機'])).toBe('改*機');
     expect(matchesKeyword('改飲品機圖片', ['改*機'])).toBe('改*機');
