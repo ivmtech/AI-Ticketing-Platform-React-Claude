@@ -32,7 +32,7 @@ describe('classifyCategories — keyword classification', () => {
     expect(classifyCategories('收到，最快明天到場地補貨 車牌確認後再send上來')).toEqual(['補貨']);
     // 修改機器 also hits the 機器設定 wildcard 改*機, so both badges apply
     expect(classifyCategories('要求修改機器內飲品價格')).toEqual(['機器設定', '補貨']);
-    expect(classifyCategories('麻煩轉貨去另一部機')).toEqual(['補貨']);
+    expect(classifyCategories('麻煩轉貨去另一部機')).toEqual(['轉貨']);
   });
 
   it('tags machine-modification messages as 機器設定 (incl. 改*機 wildcard)', () => {
