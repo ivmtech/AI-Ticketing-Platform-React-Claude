@@ -135,6 +135,28 @@ describe('analyzeChatBatch — keyword short-circuits (no Claude call)', () => {
     expect(results.every((r) => r.resolved)).toBe(true);
   });
 
+  it('resolves when a client signs off with 可以 / Yes / Ok / 非常好', async () => {
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [agentMsg('聽日上午上門補貨得唔得'), clientMsg('可以')] },
+      { groupName: 'G2', messages: [agentMsg('確認已支付附加費'), clientMsg('Yes')] },
+      { groupName: 'G3', messages: [agentMsg('貼紙改期至下週一送達'), clientMsg('Ok')] },
+      { groupName: 'G4', messages: [agentMsg('已調整補貨排程'), clientMsg('非常好')] },
+      { groupName: 'G5', messages: [agentMsg('約師傅檢查'), clientMsg('Ok了')] },
+    ]);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(results.every((r) => r.resolved)).toBe(true);
+  });
+
+  it('resolves when a colleague closes with 已加上 / 可以正常 / 唔需要', async () => {
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [clientMsg('部機得現金找唔到續'), agentMsg('已加上其他付款方式')] },
+      { groupName: 'G2', messages: [clientMsg('網上支付用唔到'), agentMsg('岩岩試左付款功能都可以正常，我地會密切留意')] },
+      { groupName: 'G3', messages: [clientMsg('屏幕要唔要加防水帆布蓬'), agentMsg('唔需要的')] },
+    ]);
+    expect(createMock).not.toHaveBeenCalled();
+    expect(results.every((r) => r.resolved)).toBe(true);
+  });
+
   it('resolves when a colleague offers 你可以找我', async () => {
     const results = await analyzeChatBatch([
       { groupName: 'G', messages: [clientMsg('合約更新及機型轉換'), agentMsg('你可以找我')] },

@@ -109,10 +109,16 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
 
         const lastRawClient = rawClientMsgs[rawClientMsgs.length - 1];
         const lastRawMsg = recent[recent.length - 1];
-        const lastRawSenderName = lastRawMsg
-          ? (lastRawMsg._data as { notifyName?: string })?.notifyName ?? null
-          : null;
         const lastMsgIsFromMe = lastRawMsg?.fromMe === true;
+        // Colleagues often post from personal numbers (LIDs) that carry no
+        // notifyName; fall back to the (cached) contact lookup like
+        // enrichMessages does, or their routine broadcasts get treated as
+        // client messages and auto-routed to 待跟進 by the keyword pre-screen.
+        const lastRawSenderName = !lastRawMsg || lastMsgIsFromMe
+          ? null
+          : ((lastRawMsg._data as { notifyName?: string })?.notifyName ||
+             (await resolveName(client, lastRawMsg.author)) ||
+             null);
         const lastMsgIsAgent = !lastRawMsg || lastMsgIsFromMe || isColleague(lastRawSenderName);
         const lastMsgFromClient = !lastMsgIsAgent;
         const unresolvedKw = matchesKeyword(lastRawClient.body, UNRESOLVED_KEYWORDS);

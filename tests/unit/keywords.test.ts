@@ -45,6 +45,12 @@ describe('matchesKeyword', () => {
     expect(matchesKeyword('已派期會有師傅到場處理', RESOLVED_KEYWORDS)).toBe('已派期');
   });
 
+  it('treats a colleague completion/final answer (已加 / 可以正常 / 唔需要) as resolved', () => {
+    expect(matchesKeyword('已加上其他付款方式', RESOLVED_KEYWORDS)).toBe('已加');
+    expect(matchesKeyword('岩岩試左付款功能都可以正常，我地會密切留意', RESOLVED_KEYWORDS)).toBe('可以正常');
+    expect(matchesKeyword('唔需要的', RESOLVED_KEYWORDS)).toBe('唔需要');
+  });
+
   it('supports * wildcard keywords spanning arbitrary text', () => {
     expect(matchesKeyword('改咖啡機價錢', ['改*機'])).toBe('改*機');
     expect(matchesKeyword('改飲品機圖片', ['改*機'])).toBe('改*機');
