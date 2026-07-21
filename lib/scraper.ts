@@ -8,6 +8,28 @@ import { analyzeChatBatch, UNRESOLVED_KEYWORDS, HIGH_PRIORITY_KEYWORDS, RESOLVED
 
 const contactNameCache = new Map<string, string | null>();
 
+// WhatsApp delivers non-conversational "messages" for group events (member
+// added/removed, subject/icon changes), calls, encryption notices, revoked
+// messages, reactions, etc. These carry an EMPTY body and fromMe: false, so if
+// one happens to be the newest item in the scan window it masquerades as a
+// fresh client message: it suppresses the RESOLVED-keyword shortcut (which only
+// fires when the LAST message is from an agent) AND trips the analyzer's
+// "客戶最後發言，未確認完成" guard — filing a genuinely-resolved ticket as 待跟進.
+// Real-world trigger: a 「~X已新增+852…」 member-add landing at 12:29 after the
+// closing 「Thanks」 at 09:49. Drop these before any last-message reasoning.
+// Values mirror MessageTypes in whatsapp-web.js (util/Constants.js).
+export const SYSTEM_MESSAGE_TYPES: ReadonlySet<string> = new Set([
+  'gp2', 'group_notification', 'notification', 'notification_template',
+  'e2e_notification', 'call_log', 'ciphertext', 'revoked', 'protocol',
+  'debug', 'broadcast_notification', 'reaction',
+]);
+
+// True for real conversational messages we should reason about. Unknown/missing
+// types default to true so we never silently drop genuine content.
+export function isConversationalMessage(type: string | null | undefined): boolean {
+  return !type || !SYSTEM_MESSAGE_TYPES.has(type);
+}
+
 
 async function resolveName(client: Client, authorId: string | undefined): Promise<string | null> {
   if (!authorId) return null;
@@ -203,6 +225,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
 
         const recent = messages
           .filter((m) => m.timestamp * 1000 >= cutoff.getTime())
+          .filter((m) => isConversationalMessage((m as { type?: string }).type))
           .sort((a, b) => a.timestamp - b.timestamp);
 
         const rawClientMsgs = recent.filter((m) => !m.fromMe && m.body);
