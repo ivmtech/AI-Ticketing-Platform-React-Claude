@@ -60,6 +60,95 @@ interface ScrapeOptions {
   onProgress?: (current: number, total: number) => void;
 }
 
+// When a scan dies with a bare minified message (e.g. "r"), puppeteer has
+// serialized an error thrown deep inside WhatsApp Web's own bundle and stripped
+// all context. This probe runs INSIDE the page and returns the real cause: it
+// checks the module loader and each internal module WWebJS.getChats() depends
+// on, then calls getChats() in a try/catch so the true message + stack survive
+// (returned as a plain string, which puppeteer will NOT minify). Purely
+// diagnostic — no side effects on the session.
+export async function diagnosePage(client: Client): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const page = (client as any).pupPage;
+  if (!page) return 'no pupPage available';
+  try {
+    return await page.evaluate(async () => {
+      const lines: string[] = [];
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const w = window as any;
+      lines.push('window.require: ' + typeof w.require);
+      lines.push('window.WWebJS: ' + typeof w.WWebJS);
+      const modules = ['WAWebCollections', 'WAWebChatGetters', 'WAWebWidFactory', 'WAWebGroupMetadataCollection'];
+      for (const name of modules) {
+        try {
+          const mod = w.require(name);
+          const keys = mod ? Object.keys(mod).slice(0, 6).join(',') : '(null)';
+          lines.push(name + ': ' + (mod ? 'ok [' + keys + ']' : 'NULL'));
+        } catch (e) {
+          lines.push(name + ': REQUIRE-THREW ' + ((e as Error)?.message ?? String(e)));
+        }
+      }
+      try {
+        const chats = await w.WWebJS.getChats();
+        lines.push('getChats(): ok, ' + (Array.isArray(chats) ? chats.length + ' chats' : typeof chats));
+      } catch (e) {
+        const err = e as Error;
+        lines.push('getChats() THREW: ' + (err?.message ?? String(e)));
+        lines.push('  stack: ' + (err?.stack ?? '(none)').split('\n').slice(0, 4).join(' <<< '));
+      }
+      return lines.join('\n  ');
+    });
+  } catch (e) {
+    return 'diagnostic evaluate failed (page likely already dead): ' + (e as Error).message;
+  }
+}
+
+// whatsapp-web.js's WWebJS.getChats() maps EVERY chat through getChatModel()
+// inside a single Promise.all, so if getChatModel throws for even one chat the
+// whole call rejects and we get zero groups. On current WhatsApp Web builds
+// that happens routinely: getChatModel() calls groupMetadata.update() and a
+// lastMessage IndexedDB lookup, and a bad/undefined key there throws
+//   "Failed to execute 'get' on 'IDBObjectStore': No key or key range specified"
+// (surfaced to Node as the minified "Scan error: r"). The scanner never uses
+// groupMetadata or lastMessage — only id, name and isGroup — so we replace
+// getChats() with a version that recovers each failing chat via a minimal
+// model built from the cheap, side-effect-free chat.serialize(). Re-injected
+// each scan (idempotent); mirrors the existing monkey-patch style in bootstrap.
+async function installResilientGetChats(client: Client): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const page = (client as any).pupPage;
+  if (!page) return;
+  await page.evaluate(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const w = window as any;
+    if (!w.WWebJS || typeof w.WWebJS.getChatModel !== 'function') return;
+    w.WWebJS.getChats = async () => {
+      const Chat = w.require('WAWebCollections').Chat;
+      const chats = Chat.getModelsArray();
+      const models = [];
+      let recovered = 0;
+      for (const chat of chats) {
+        try {
+          models.push(await w.WWebJS.getChatModel(chat));
+        } catch {
+          // Full model failed (usually the groupMetadata/lastMessage IDB path).
+          // Fall back to the minimal fields the scanner needs.
+          try {
+            const m = chat.serialize();
+            m.isGroup = chat.id?.server === 'g.us' || !!chat.groupMetadata;
+            try { m.formattedTitle = chat.formattedTitle; } catch { /* getter may throw */ }
+            delete m.msgs;
+            models.push(m);
+            recovered++;
+          } catch { /* unrecoverable chat — skip it entirely */ }
+        }
+      }
+      if (recovered > 0) w.__wwebjsGetChatsRecovered = recovered;
+      return models;
+    };
+  });
+}
+
 export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions = {}): Promise<ScanResult> {
   const now = new Date();
   // How far back to scan, in hours. Default 168h (= 7 days).
@@ -69,7 +158,22 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
   const MSG_LIMIT = parseInt(process.env.MESSAGE_HISTORY_LIMIT ?? '10');
   const CONCURRENCY = Math.max(1, parseInt(process.env.SCAN_CONCURRENCY ?? '5'));
 
+  await installResilientGetChats(client);
   const chats: Chat[] = await client.getChats();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const page = (client as any).pupPage;
+  if (page) {
+    try {
+      const recovered = await page.evaluate(() => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const w = window as any;
+        const n = w.__wwebjsGetChatsRecovered ?? 0;
+        w.__wwebjsGetChatsRecovered = 0;
+        return n;
+      });
+      if (recovered > 0) console.warn('  getChats: recovered ' + recovered + ' chat(s) via minimal model (full serialize failed)');
+    } catch { /* diagnostic only */ }
+  }
   const groups = chats.filter((c) => c.isGroup);
   console.log(
     'Found ' + groups.length + ' group(s). Scanning last ' + LOOKBACK_HOURS + 'h' +

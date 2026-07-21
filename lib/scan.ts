@@ -58,6 +58,36 @@ export function lastScheduledRun(): Date {
   return result;
 }
 
+// Decide whether a scan failure means the WhatsApp page/CDP context was lost
+// and we must reconnect. whatsapp-web.js runs everything through
+// page.evaluate(), so a dead page surfaces in many shapes: named
+// puppeteer/CDP errors (detached Frame, Target/Session closed, Protocol error,
+// destroyed execution context, "Promise was collected"), OR a bare minified
+// token thrown from WhatsApp Web's own bundle that carries no readable text at
+// all — e.g. "Scan error: r" (observed 2026-07-20), where getChats() failed
+// inside the page and the message is a single minified variable name. Matching
+// only the first group left the client wedged AND still flagged ready, so the
+// next slot scanned a dead page and silently sent nothing.
+//
+// The named-error list is an allowlist so unrelated failures (e.g. an SMTP
+// send error) do NOT spuriously reconnect WhatsApp. The minified-token rule is
+// deliberately narrow — no whitespace and ≤3 chars — because real error
+// messages are longer sentences and never look like that.
+// How many consecutive page-lost scan failures we tolerate before the circuit
+// breaker in runScan() stops auto-reconnecting (a reconnect that immediately
+// re-fails the same way just loops forever). A single successful scrape resets
+// the counter (state.consecutivePageLostFailures).
+export const MAX_CONSECUTIVE_PAGE_LOST = parseInt(process.env.MAX_PAGE_LOST_RETRIES ?? '3', 10);
+
+export function isPageLostError(msg: string | null | undefined): boolean {
+  if (!msg) return false;
+  if (/detached Frame|Session closed|Target closed|Protocol error|Execution context|context was destroyed|Promise was collected|Cannot find context|frame got detached/i.test(msg)) {
+    return true;
+  }
+  const trimmed = msg.trim();
+  return trimmed.length > 0 && trimmed.length <= 3 && !/\s/.test(trimmed);
+}
+
 export async function runScan(): Promise<void> {
   if (state.isRunning) return;
 
@@ -90,6 +120,10 @@ export async function runScan(): Promise<void> {
         state.progress = { current, total };
       },
     });
+    // Scrape reached the page and returned — WhatsApp is healthy, so clear the
+    // page-lost circuit breaker regardless of how the rest of the run goes.
+    state.consecutivePageLostFailures = 0;
+
     const { resolved, unresolved, skipped = [] } = results;
     const total = resolved.length + unresolved.length;
 
@@ -120,16 +154,50 @@ export async function runScan(): Promise<void> {
   } catch (err) {
     const msg = (err as Error).message ?? '';
     console.error('Scan error:', msg);
-    if (/detached Frame|Session closed|Target closed/i.test(msg)) {
+    if (isPageLostError(msg)) {
+      // On the FIRST failure of a streak, while the page is likely still alive
+      // (the minified throw is a JS error, not a page crash — the Target only
+      // closes later during reconnect), probe the page for the real cause. A
+      // bare message like "r" tells us nothing; the diagnostic names the broken
+      // internal module so we know which pinned version to try.
+      if (state.consecutivePageLostFailures === 0 && client) {
+        try {
+          const { diagnosePage } = await import('./scraper');
+          console.error('  [diag] page probe:\n  ' + (await diagnosePage(client)));
+        } catch (e) {
+          console.warn('  [diag] probe failed:', (e as Error).message);
+        }
+      }
+
       globalThis.__whatsappReady = false;
       state.scanMissedDueToDisconnect = true;
-      // A detached frame often does NOT emit a 'disconnected' event, so the
-      // client would otherwise stay stuck "not ready" forever. Actively kick
-      // off a reconnect; the handler's own guard makes this idempotent if a
-      // 'disconnected' event does fire too. The catch-up scan then runs once
-      // 'ready' fires again (scanMissedDueToDisconnect is honored there).
-      console.warn('WhatsApp page lost — triggering reconnect...');
-      globalThis.__whatsappReconnect?.('detached frame during scan');
+      state.consecutivePageLostFailures += 1;
+
+      // Circuit breaker. A reconnect brings the client back to 'ready' and the
+      // 'ready' handler fires a catch-up scan — but if the underlying page is
+      // still broken (e.g. getChats() throws the same minified "r"), that scan
+      // re-fails identically and we loop forever, respawning Chrome each time.
+      // After a few consecutive page-lost failures, stop auto-reconnecting and
+      // leave the client not-ready so the loop halts; the ready/reconnect
+      // watchdogs and the next scheduled slot can still recover it later, and a
+      // single successful scrape resets the counter.
+      if (state.consecutivePageLostFailures > MAX_CONSECUTIVE_PAGE_LOST) {
+        console.error(
+          `WhatsApp page lost ${state.consecutivePageLostFailures}× in a row — reconnecting is not helping; ` +
+          `giving up auto-reconnect to stop the loop. Manual restart likely needed (check the pinned WhatsApp Web version).`
+        );
+      } else {
+        // A lost page often does NOT emit a 'disconnected' event, so the client
+        // would otherwise stay stuck — either "not ready" forever, or (for bare
+        // minified errors) still flagged ready over a dead page. Actively kick
+        // off a reconnect; the handler's own guard makes this idempotent if a
+        // 'disconnected' event does fire too. The catch-up scan then runs once
+        // 'ready' fires again (scanMissedDueToDisconnect is honored there).
+        console.warn(
+          `WhatsApp page lost — triggering reconnect (${state.consecutivePageLostFailures}/${MAX_CONSECUTIVE_PAGE_LOST})...`
+        );
+        globalThis.__whatsappReconnect?.('page lost during scan');
+      }
     }
   }
 

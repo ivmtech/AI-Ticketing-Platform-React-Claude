@@ -60,6 +60,11 @@ export interface AppState {
   logs: string[];
   reportEmails: string[];
   scanMissedDueToDisconnect: boolean;
+  // Consecutive scan failures whose error looked like a lost page (see
+  // isPageLostError). Reset to 0 on any successful scan. Used as a circuit
+  // breaker: once it exceeds a cap we stop auto-reconnecting, because a
+  // reconnect that immediately re-fails the same way just loops forever.
+  consecutivePageLostFailures: number;
 }
 
 export interface EnrichedMessage {

@@ -77,6 +77,21 @@ export async function bootstrap(): Promise<void> {
 
   patchConsole();
 
+  // whatsapp-web.js drives everything through puppeteer page.evaluate(). When
+  // the page/target is torn down during a reconnect, in-flight evaluate calls
+  // reject asynchronously with TargetCloseError/ProtocolError that no caller is
+  // awaiting anymore — surfacing as unhandledRejection. Node's default for that
+  // can terminate the process, which would kill this 24/7 monitor over benign
+  // teardown noise. Swallow those, but keep logging anything unexpected.
+  process.on('unhandledRejection', (reason: unknown) => {
+    const msg = reason instanceof Error ? reason.message : String(reason);
+    if (/Target closed|Protocol error|Session closed|detached Frame|Execution context|Promise was collected/i.test(msg)) {
+      console.warn('Ignored puppeteer teardown rejection:', msg.split('\n')[0]);
+      return;
+    }
+    console.error('Unhandled rejection:', msg);
+  });
+
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const qrcode = require('qrcode-terminal') as { generate: (text: string, opts?: { small?: boolean }) => void };
 
@@ -94,6 +109,11 @@ export async function bootstrap(): Promise<void> {
 
   const executablePath = resolveChromePath();
   if (executablePath) console.log(`Using Chrome at: ${executablePath}`);
+
+  // See the webVersionCache block below for why this pin is load-bearing.
+  // Override with WHATSAPP_WEB_VERSION when the pinned build stops working.
+  const webVersion = process.env.WHATSAPP_WEB_VERSION ?? '2.3000.1043441279-alpha';
+  console.log(`Pinned WhatsApp Web version: ${webVersion}`);
 
   // A dev hot-reload / restart replaces the Node process without calling
   // client.destroy(), orphaning the headless Chrome which keeps holding the
@@ -155,11 +175,22 @@ export async function bootstrap(): Promise<void> {
   }
   killStaleBrowsers();
 
+  // Pin to a specific WhatsApp Web build from the community archive. This is
+  // load-bearing: whatsapp-web.js 1.34.7's injected getChats() calls
+  // window.require('WAWebCollections')… and the live site frequently RENAMES
+  // those internal modules, which makes getChats() throw a bare minified error
+  // (seen as "Scan error: r") and can also stop 'ready' from firing.
+  //
+  // CRITICAL: the library default (webVersion '2.3000.1017054665') no longer
+  // exists in the archive → RemoteWebCache.resolve() silently returns null and
+  // whatsapp-web.js falls back to serving LIVE/latest WhatsApp Web. That is the
+  // moving target that broke getChats. We must pin webVersion to a file that
+  // actually EXISTS in the archive, else the pin is a no-op. Override via
+  // WHATSAPP_WEB_VERSION (resolved above) when this build stops working — pick
+  // one that returns 200 from the remotePath below.
   const client = new Client({
     authStrategy: new LocalAuth({ dataPath: '.wwebjs_auth' }),
-    // Pin to a known-good WhatsApp Web version from the community archive.
-    // The live site frequently ships JS module renames that silently break
-    // the LoadUtils injection, preventing 'ready' from ever firing.
+    webVersion,
     webVersionCache: {
       type: 'remote',
       remotePath: 'https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/{version}.html',
