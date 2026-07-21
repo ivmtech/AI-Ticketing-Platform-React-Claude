@@ -204,15 +204,15 @@ describe('analyzeChatBatch — verdict overrides', () => {
 });
 
 describe('analyzeChatBatch — resilience', () => {
-  it('falls back to individual calls when the batch response is malformed', async () => {
+  it('recovers via a re-batch when the primary batch response is malformed', async () => {
     createMock
-      .mockResolvedValueOnce(reply('sorry, I cannot do that')) // bad batch
-      .mockResolvedValueOnce(reply('{"resolved": true, "clientSummary": "s", "reason": "r", "priority": "中", "confidence": 0.9}'));
+      .mockResolvedValueOnce(reply('sorry, I cannot do that')) // bad primary batch
+      .mockResolvedValueOnce(batchReply([{ resolved: true, clientSummary: 's', reason: 'r', priority: '中', confidence: 0.9 }])); // re-batch
 
     const results = await analyzeChatBatch([
       { groupName: 'G', messages: [clientMsg('問題'), agentMsg('睇緊')] },
     ]);
-    expect(createMock).toHaveBeenCalledTimes(2); // batch + 1 individual
+    expect(createMock).toHaveBeenCalledTimes(2); // primary batch + one re-batch (NOT individual)
     expect(results[0].resolved).toBe(true);
   });
 
@@ -235,7 +235,7 @@ describe('analyzeChatBatch — resilience', () => {
     expect(results[1].resolved).toBe(false);
   });
 
-  it('keeps good idx-tagged results and only re-runs the group the batch skipped', async () => {
+  it('keeps good idx-tagged results and re-batches only the group the batch skipped', async () => {
     createMock
       .mockResolvedValueOnce(
         batchReply([
@@ -243,17 +243,45 @@ describe('analyzeChatBatch — resilience', () => {
           { idx: 1, resolved: true, clientSummary: 'B', reason: 'r', priority: '中', confidence: 0.9 },
         ])
       )
-      .mockResolvedValueOnce(reply('{"resolved": false, "clientSummary": "A", "reason": "r", "priority": "中", "confidence": 0.8}'));
+      // Re-batch of the single missing group (positional, one-element array).
+      .mockResolvedValueOnce(batchReply([{ resolved: false, clientSummary: 'A', reason: 'r', priority: '中', confidence: 0.8 }]));
 
     const results = await analyzeChatBatch([
       { groupName: 'G1', messages: [clientMsg('問題一'), agentMsg('睇緊')] },
       { groupName: 'G2', messages: [clientMsg('問題二'), agentMsg('睇緊')] },
     ]);
-    expect(createMock).toHaveBeenCalledTimes(2); // batch + only the missing group
+    expect(createMock).toHaveBeenCalledTimes(2); // batch + one re-batch of the missing group
     expect(results[0].clientSummary).toBe('A');
     expect(results[0].resolved).toBe(false);
     expect(results[1].clientSummary).toBe('B');
     expect(results[1].resolved).toBe(true);
+  });
+
+  it('recovers MULTIPLE skipped groups in ONE re-batch, not one call each', async () => {
+    createMock
+      .mockResolvedValueOnce(
+        // Primary batch covers only idx 1; idx 0 and 2 are skipped.
+        batchReply([{ idx: 1, resolved: true, clientSummary: 'B', reason: 'r', priority: '中', confidence: 0.9 }])
+      )
+      .mockResolvedValueOnce(
+        // Single re-batch returns BOTH missing groups (positional over the subset).
+        batchReply([
+          { resolved: false, clientSummary: 'A', reason: 'r', priority: '中', confidence: 0.8 },
+          { resolved: false, clientSummary: 'C', reason: 'r', priority: '中', confidence: 0.8 },
+        ])
+      );
+
+    const results = await analyzeChatBatch([
+      { groupName: 'G1', messages: [clientMsg('問題一'), agentMsg('睇緊')] },
+      { groupName: 'G2', messages: [clientMsg('問題二'), agentMsg('睇緊')] },
+      { groupName: 'G3', messages: [clientMsg('問題三'), agentMsg('睇緊')] },
+    ]);
+    // 2 requests total (primary + one re-batch), NOT 3 (would be 1 + 2 individual).
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(results.map((r) => r.clientSummary)).toEqual(['A', 'B', 'C']);
+    expect(results[0].resolved).toBe(false);
+    expect(results[1].resolved).toBe(true);
+    expect(results[2].resolved).toBe(false);
   });
 
   it('falls back when the batch array length does not match item count', async () => {

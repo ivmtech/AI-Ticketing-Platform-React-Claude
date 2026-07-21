@@ -187,6 +187,71 @@ async function analyzeOne(
   return null;
 }
 
+// Run ONE batched analysis request over `subset` and return a map from each
+// item's position in `subset` to its parsed result object. Results are matched
+// by the echoed "idx" when present (so a skipped group doesn't invalidate the
+// rest), else positionally when the array length matches. 429s are retried with
+// the same retry-after backoff as analyzeOne. On any other failure — or a
+// length mismatch with no "idx" to match by — it returns whatever was covered
+// (possibly {}), leaving the caller to recover the remainder.
+async function runBatchOnce(
+  model: string,
+  subset: Array<{ groupName: string; transcript: string }>
+): Promise<Record<number, Record<string, unknown>>> {
+  const out: Record<number, Record<string, unknown>> = {};
+  if (subset.length === 0) return out;
+
+  const prompt = buildBatchPrompt(subset);
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await getClient().messages.create({
+        model,
+        max_tokens: 8000,
+        messages: [{ role: 'user', content: prompt }],
+      });
+
+      const text = ((response.content[0] as { text?: string })?.text ?? '').trim();
+      const jsonMatch = text.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error('No JSON array in response');
+
+      const parsed = JSON.parse(jsonMatch[0]) as unknown[];
+      if (!Array.isArray(parsed)) throw new Error('Response is not an array');
+
+      const hasIdx = parsed.length > 0 && parsed.every(
+        (o) => o != null && typeof o === 'object' && Number.isInteger((o as { idx?: unknown }).idx)
+      );
+
+      if (hasIdx) {
+        for (const o of parsed) {
+          const li = (o as { idx: number }).idx;
+          if (li >= 0 && li < subset.length && out[li] === undefined) {
+            out[li] = o as Record<string, unknown>;
+          }
+        }
+      } else if (parsed.length === subset.length) {
+        parsed.forEach((o, li) => { out[li] = o as Record<string, unknown>; });
+      } else {
+        throw new Error('Array length mismatch: expected ' + subset.length + ', got ' + parsed.length + ', and objects carry no "idx" to match by');
+      }
+      return out;
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      if (status === 429 && attempt < MAX_ATTEMPTS) {
+        const h = (err as { headers?: { get?: (name: string) => string | null } & Record<string, string> }).headers;
+        const retryAfter = Number(typeof h?.get === 'function' ? h.get('retry-after') : h?.['retry-after']);
+        const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 60_000;
+        console.warn('  Rate limited on batch of ' + subset.length + '; waiting ' + Math.round(waitMs / 1000) + 's (attempt ' + attempt + '/' + MAX_ATTEMPTS + ')');
+        await sleep(waitMs);
+        continue;
+      }
+      console.warn('  Batch request failed (' + (err as Error).message + ')');
+      return out;
+    }
+  }
+  return out;
+}
+
 export async function analyzeChatBatch(
   items: Array<{ groupName: string; messages: EnrichedMessage[] }>
 ): Promise<ClaudeAnalysisResult[]> {
@@ -244,59 +309,45 @@ async function _analyzeBatchChunk(
   const claudeResultMap: Record<number, Record<string, unknown> | null> = {};
 
   if (needsClaudeIdx.length > 0) {
-    const claudeItems = needsClaudeIdx.map((i) => prepared[i]);
-    const prompt = buildBatchPrompt(claudeItems);
-
-    try {
-      const response = await getClient().messages.create({
-        model,
-        max_tokens: 8000,
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      const text = ((response.content[0] as { text?: string })?.text ?? '').trim();
-      const jsonMatch = text.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) throw new Error('No JSON array in response');
-
-      const parsed = JSON.parse(jsonMatch[0]) as unknown[];
-      if (!Array.isArray(parsed)) throw new Error('Response is not an array');
-
-      const hasIdx = parsed.length > 0 && parsed.every(
-        (o) => o != null && typeof o === 'object' && Number.isInteger((o as { idx?: unknown }).idx)
-      );
-
-      if (hasIdx) {
-        // Match each result to its group via the echoed "idx", so one skipped
-        // group no longer invalidates the rest of the batch.
-        for (const o of parsed) {
-          const origIdx = needsClaudeIdx[(o as { idx: number }).idx];
-          if (origIdx !== undefined && claudeResultMap[origIdx] === undefined) {
-            claudeResultMap[origIdx] = o as Record<string, unknown>;
-          }
-        }
-      } else if (parsed.length === claudeItems.length) {
-        needsClaudeIdx.forEach((origIdx, ci) => {
-          claudeResultMap[origIdx] = parsed[ci] as Record<string, unknown>;
-        });
-      } else {
-        throw new Error('Array length mismatch: expected ' + claudeItems.length + ', got ' + parsed.length + ', and objects carry no "idx" to match by');
-      }
-    } catch (err) {
-      console.warn('  Batch Claude analysis failed (' + (err as Error).message + '). Falling back to individual calls...');
-    }
-
-    // Re-run whatever the batch didn't cover, one request at a time with a
-    // pause in between — the org allows ~5 requests/minute, so a concurrent
-    // burst here just turns into a wall of 429s.
-    const missing = needsClaudeIdx.filter((origIdx) => claudeResultMap[origIdx] === undefined);
-    if (missing.length > 0 && missing.length < needsClaudeIdx.length) {
-      console.warn('  Batch response missing ' + missing.length + ' group(s); re-running those individually...');
-    }
+    const claudeItems = needsClaudeIdx.map((i) => ({
+      groupName: prepared[i].groupName,
+      transcript: prepared[i].transcript,
+    }));
     const delayMs = parseInt(process.env.FALLBACK_DELAY_MS ?? '13000', 10);
-    for (let i = 0; i < missing.length; i++) {
-      if (i > 0) await sleep(delayMs);
-      const { groupName, transcript } = prepared[missing[i]];
-      claudeResultMap[missing[i]] = await analyzeOne(model, groupName, transcript);
+
+    // Primary batch over everything that needs Claude.
+    const first = await runBatchOnce(model, claudeItems);
+    for (const [li, r] of Object.entries(first)) {
+      claudeResultMap[needsClaudeIdx[Number(li)]] = r;
+    }
+
+    // Whatever the primary batch didn't cover (Claude skipped it, or the whole
+    // call failed) is retried as ONE more batched request — NOT one call per
+    // group. At the org's ~5 requests/minute that is the difference between a
+    // single request and dozens, and dozens become 429s that surface as
+    // "分析失敗，需人手覆核". A last-resort individual pass then mops up anything
+    // the re-batch still misses (should be rare and small).
+    let missingLocal = claudeItems
+      .map((_, li) => li)
+      .filter((li) => claudeResultMap[needsClaudeIdx[li]] === undefined);
+
+    if (missingLocal.length > 0) {
+      console.warn('  Batch left ' + missingLocal.length + '/' + needsClaudeIdx.length + ' group(s) uncovered; retrying them as one re-batch...');
+      await sleep(delayMs);
+      const second = await runBatchOnce(model, missingLocal.map((li) => claudeItems[li]));
+      for (const [si, r] of Object.entries(second)) {
+        claudeResultMap[needsClaudeIdx[missingLocal[Number(si)]]] = r;
+      }
+      missingLocal = missingLocal.filter((li) => claudeResultMap[needsClaudeIdx[li]] === undefined);
+    }
+
+    if (missingLocal.length > 0) {
+      console.warn('  ' + missingLocal.length + ' group(s) still uncovered after re-batch; running those individually...');
+      for (let i = 0; i < missingLocal.length; i++) {
+        if (i > 0) await sleep(delayMs);
+        const { groupName, transcript } = claudeItems[missingLocal[i]];
+        claudeResultMap[needsClaudeIdx[missingLocal[i]]] = await analyzeOne(model, groupName, transcript);
+      }
     }
   }
 
