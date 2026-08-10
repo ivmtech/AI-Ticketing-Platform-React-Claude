@@ -33,17 +33,30 @@ describe('matchesKeyword', () => {
   it('detects colleague resolution phrases (辛苦哂 / 已通知同事 / 現在ok)', () => {
     expect(matchesKeyword('辛苦哂', RESOLVED_KEYWORDS)).toBe('辛苦哂');
     expect(matchesKeyword('已通知同事', RESOLVED_KEYWORDS)).toBe('已通知同事');
-    // Matching is case-insensitive, so '現在ok' hits the earlier 'OK' entry first.
-    expect(matchesKeyword('現在ok', RESOLVED_KEYWORDS)).toBe('OK');
+    // '在' is a word boundary before 'ok', so the single 'ok' entry still fires.
+    expect(matchesKeyword('現在ok', RESOLVED_KEYWORDS)).toBe('ok');
   });
 
-  it('matches keywords case-insensitively', () => {
-    expect(matchesKeyword('DONE', RESOLVED_KEYWORDS)).toBe('Done');
-    expect(matchesKeyword('all done here', RESOLVED_KEYWORDS)).toBe('Done');
-    expect(matchesKeyword('THKS a lot', RESOLVED_KEYWORDS)).toBe('Thks');
+  it('matches ASCII keywords case-insensitively', () => {
+    expect(matchesKeyword('DONE', RESOLVED_KEYWORDS)).toBe('done');
+    expect(matchesKeyword('all done here', RESOLVED_KEYWORDS)).toBe('done');
+    expect(matchesKeyword('THKS a lot', RESOLVED_KEYWORDS)).toBe('thks');
     expect(matchesKeyword('changed the *MACHINE*', ['改*機'])).toBeNull();
-    expect(matchesKeyword('ASAP please', HIGH_PRIORITY_KEYWORDS)).toBe('ASAP');
-    expect(matchesKeyword('asap please', HIGH_PRIORITY_KEYWORDS)).toBe('ASAP');
+    expect(matchesKeyword('ASAP please', HIGH_PRIORITY_KEYWORDS)).toBe('asap');
+    expect(matchesKeyword('asap please', HIGH_PRIORITY_KEYWORDS)).toBe('asap');
+  });
+
+  it('only fires ASCII keywords on a leading word boundary', () => {
+    // 'ok' must NOT match inside ordinary words…
+    expect(matchesKeyword('我book咗師傅', RESOLVED_KEYWORDS)).toBeNull();
+    expect(matchesKeyword('let me look', RESOLVED_KEYWORDS)).toBeNull();
+    expect(matchesKeyword('個機broke咗', RESOLVED_KEYWORDS)).toBeNull();
+    expect(matchesKeyword('token過期', RESOLVED_KEYWORDS)).toBeNull();
+    // …but still matches a standalone / prefixed / CJK-adjacent 'ok'.
+    expect(matchesKeyword('okok', RESOLVED_KEYWORDS)).toBe('ok');
+    expect(matchesKeyword('現在ok啦', RESOLVED_KEYWORDS)).toBe('ok');
+    // A leading boundary still catches suffixed typos like 'thankss'.
+    expect(matchesKeyword('thankss', RESOLVED_KEYWORDS)).toBe('thanks');
   });
 
   it('treats a colleague "你可以找我" offer as a resolution phrase', () => {

@@ -72,15 +72,30 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+// A keyword is "ASCII-wordy" when it contains a Latin letter and no non-ASCII
+// characters, e.g. 'OK', 'Done', 'ok now'. Such keywords match on a leading
+// word boundary (see matchesKeyword) so a short one like 'ok' never fires
+// inside 'book'/'look'/'broke'. Mixed or CJK keywords ('已check', '搞掂') have
+// no meaningful word boundary and stay substring matches.
+function isAsciiWordKeyword(kw: string): boolean {
+  return /[A-Za-z]/.test(kw) && !/[^\x00-\x7F]/.test(kw);
+}
+
 // A keyword may contain '*' as a wildcard for any run of characters (including
-// none), e.g. '改*機' matches 改咖啡機價錢 / 改售賣機圖片. Plain keywords are
-// substring matches as before.
+// none), e.g. '改*機' matches 改咖啡機價錢 / 改售賣機圖片. Matching is
+// case-insensitive throughout. ASCII-word keywords additionally require a
+// LEADING word boundary — so 'ok' still matches 'ok'/'okok'/'現在ok' (the '在'
+// is a boundary) but not 'book'/'look'/'broke'. Everything else is a plain
+// (case-insensitive) substring match.
 export function matchesKeyword(text: string | null | undefined, keywords: string[]): string | null {
   if (!text) return null;
   const lowerText = text.toLowerCase();
   for (const kw of keywords) {
     if (kw.includes('*')) {
       const re = new RegExp(kw.split('*').map(escapeRegExp).join('[\\s\\S]*'), 'i');
+      if (re.test(text)) return kw;
+    } else if (isAsciiWordKeyword(kw)) {
+      const re = new RegExp('\\b' + escapeRegExp(kw), 'i');
       if (re.test(text)) return kw;
     } else if (lowerText.includes(kw.toLowerCase())) {
       return kw;

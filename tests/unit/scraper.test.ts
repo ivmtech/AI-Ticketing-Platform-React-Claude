@@ -57,7 +57,7 @@ describe('scan last-message detection with a trailing member-add notification', 
     const last = lastConversational(convo);
     const lastIsAgent = last?.fromMe === true;
     const resolvedKw = lastIsAgent ? matchesKeyword(last?.body ?? '', RESOLVED_KEYWORDS) : null;
-    expect(resolvedKw).toBe('Thanks'); // → routed to 已解決, not 待跟進
+    expect(resolvedKw).toBe('thanks'); // → routed to 已解決, not 待跟進
   });
 
   it('would have mis-detected the client-side notice as last WITHOUT the filter', () => {
