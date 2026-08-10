@@ -33,7 +33,17 @@ describe('matchesKeyword', () => {
   it('detects colleague resolution phrases (辛苦哂 / 已通知同事 / 現在ok)', () => {
     expect(matchesKeyword('辛苦哂', RESOLVED_KEYWORDS)).toBe('辛苦哂');
     expect(matchesKeyword('已通知同事', RESOLVED_KEYWORDS)).toBe('已通知同事');
-    expect(matchesKeyword('現在ok', RESOLVED_KEYWORDS)).toBe('現在ok');
+    // Matching is case-insensitive, so '現在ok' hits the earlier 'OK' entry first.
+    expect(matchesKeyword('現在ok', RESOLVED_KEYWORDS)).toBe('OK');
+  });
+
+  it('matches keywords case-insensitively', () => {
+    expect(matchesKeyword('DONE', RESOLVED_KEYWORDS)).toBe('Done');
+    expect(matchesKeyword('all done here', RESOLVED_KEYWORDS)).toBe('Done');
+    expect(matchesKeyword('THKS a lot', RESOLVED_KEYWORDS)).toBe('Thks');
+    expect(matchesKeyword('changed the *MACHINE*', ['改*機'])).toBeNull();
+    expect(matchesKeyword('ASAP please', HIGH_PRIORITY_KEYWORDS)).toBe('ASAP');
+    expect(matchesKeyword('asap please', HIGH_PRIORITY_KEYWORDS)).toBe('ASAP');
   });
 
   it('treats a colleague "你可以找我" offer as a resolution phrase', () => {

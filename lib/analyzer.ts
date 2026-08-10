@@ -77,11 +77,12 @@ function escapeRegExp(s: string): string {
 // substring matches as before.
 export function matchesKeyword(text: string | null | undefined, keywords: string[]): string | null {
   if (!text) return null;
+  const lowerText = text.toLowerCase();
   for (const kw of keywords) {
     if (kw.includes('*')) {
-      const re = new RegExp(kw.split('*').map(escapeRegExp).join('[\\s\\S]*'));
+      const re = new RegExp(kw.split('*').map(escapeRegExp).join('[\\s\\S]*'), 'i');
       if (re.test(text)) return kw;
-    } else if (text.includes(kw)) {
+    } else if (lowerText.includes(kw.toLowerCase())) {
       return kw;
     }
   }
