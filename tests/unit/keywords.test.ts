@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   matchesKeyword,
   isColleague,
+  lidName,
   UNRESOLVED_KEYWORDS,
   RESOLVED_KEYWORDS,
   HIGH_PRIORITY_KEYWORDS,
@@ -98,5 +99,37 @@ describe('isColleague', () => {
     expect(isColleague(null)).toBe(false);
     expect(isColleague(undefined)).toBe(false);
     expect(isColleague('')).toBe(false);
+  });
+});
+
+// WhatsApp addresses many group members by LID (`<lid>@lid`), which carries no
+// phone number and often no notifyName — the scanner then printed the bare id
+// and isColleague() could never match it, so colleagues posting from a LID were
+// read as clients. LID_NAMES in vitest.config.mts maps two ids for these tests.
+describe('lidName', () => {
+  it('maps a configured LID to its display name', () => {
+    expect(lidName('182038447571092')).toBe('補貨司機');
+  });
+
+  it('matches with or without the @-suffix', () => {
+    expect(lidName('182038447571092@lid')).toBe('補貨司機');
+    expect(lidName('182038447571092@c.us')).toBe('補貨司機');
+  });
+
+  it('trims whitespace around ids and names in the env value', () => {
+    expect(lidName('130086019833871')).toBe('Regular Client');
+  });
+
+  it('returns null for unmapped ids and nullish input', () => {
+    expect(lidName('999999999999999')).toBeNull();
+    expect(lidName(null)).toBeNull();
+    expect(lidName(undefined)).toBeNull();
+    expect(lidName('')).toBeNull();
+  });
+
+  it('feeds isColleague, which is what marks a LID sender as staff', () => {
+    expect(isColleague(lidName('182038447571092'))).toBe(true);
+    expect(isColleague(lidName('130086019833871'))).toBe(false);
+    expect(isColleague('182038447571092')).toBe(false); // the bare id never matches
   });
 });

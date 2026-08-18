@@ -64,6 +64,42 @@ export function isColleague(name: string | null | undefined): boolean {
   return COLLEAGUE_NAMES.some((c) => c.toLowerCase() === lower);
 }
 
+// ── LID → display name ──────────────────────────────────────────────────────
+// WhatsApp now addresses many group participants by LID (its privacy scheme:
+// `<lid>@lid` instead of `<phone>@c.us`). A LID carries no phone number, and
+// these senders often have no notifyName and are not in the address book — so
+// the scanner fell back to printing the bare LID (e.g. 182038447571092), which
+// isColleague() can never match. Colleagues posting from such an address were
+// therefore read as clients, sending their routine broadcasts to 待跟進.
+//
+// LID_NAMES maps those ids to display names:
+//   LID_NAMES=182038447571092:補貨司機,130086019833871:Ah Ming
+// The mapped name then flows through isColleague()/COLLEAGUE_NAMES like any
+// other sender, so listing it in COLLEAGUE_NAMES too is what marks them staff.
+//
+// This map deliberately WINS over WhatsApp's own notifyName: notifyName can
+// appear one scan and vanish the next, which would otherwise flip the same
+// person between colleague and client between runs. An explicit mapping should
+// be stable. Keys are stored without the @-suffix so `182038447571092` and
+// `182038447571092@lid` both resolve.
+const LID_NAMES: Map<string, string> = new Map(
+  (process.env.LID_NAMES ?? '')
+    .split(',')
+    .map((pair) => {
+      const i = pair.indexOf(':');
+      if (i === -1) return null;
+      const id = pair.slice(0, i).trim().split('@')[0];
+      const name = pair.slice(i + 1).trim();
+      return id && name ? ([id, name] as [string, string]) : null;
+    })
+    .filter((e): e is [string, string] => e !== null)
+);
+
+export function lidName(authorId: string | null | undefined): string | null {
+  if (!authorId || LID_NAMES.size === 0) return null;
+  return LID_NAMES.get(authorId.split('@')[0]) ?? null;
+}
+
 function isAgentMsg(msg: EnrichedMessage): boolean {
   return msg.fromMe === true || isColleague(msg.senderName);
 }

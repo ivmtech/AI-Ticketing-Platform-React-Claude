@@ -4,7 +4,7 @@ import type { Client, Chat } from 'whatsapp-web.js';
 import type { Message as WAMessage } from 'whatsapp-web.js';
 type Message = WAMessage & { _data?: { notifyName?: string } };
 import type { ScanResult, ScanEntry, SkippedEntry, EnrichedMessage } from './types';
-import { analyzeChatBatch, UNRESOLVED_KEYWORDS, HIGH_PRIORITY_KEYWORDS, RESOLVED_KEYWORDS, matchesKeyword, isColleague, classifyCategories } from './analyzer';
+import { analyzeChatBatch, UNRESOLVED_KEYWORDS, HIGH_PRIORITY_KEYWORDS, RESOLVED_KEYWORDS, matchesKeyword, isColleague, classifyCategories, lidName } from './analyzer';
 
 const contactNameCache = new Map<string, string | null>();
 
@@ -45,11 +45,25 @@ async function resolveName(client: Client, authorId: string | undefined): Promis
   }
 }
 
+// The one name-resolution order used everywhere a sender is displayed or
+// classified. LID_NAMES first (explicit config, stable across scans), then
+// WhatsApp's notifyName, then the address book, and only then the bare id —
+// which for a LID sender is an opaque number, not a phone number.
+async function displayName(client: Client, msg: Message): Promise<string> {
+  return (
+    lidName(msg.author) ||
+    (msg._data as { notifyName?: string })?.notifyName ||
+    (await resolveName(client, msg.author)) ||
+    (msg.author ? msg.author.split('@')[0] : 'Unknown') ||
+    'Unknown'
+  );
+}
+
 async function enrichMessages(client: Client, messages: Message[]): Promise<EnrichedMessage[]> {
   const needsLookup = [
     ...new Set(
       messages
-        .filter((m) => !(m._data as { notifyName?: string })?.notifyName && m.author)
+        .filter((m) => !lidName(m.author) && !(m._data as { notifyName?: string })?.notifyName && m.author)
         .map((m) => m.author as string)
     ),
   ];
@@ -71,7 +85,8 @@ async function enrichMessages(client: Client, messages: Message[]): Promise<Enri
     senderName:
       msg.fromMe
         ? (deviceName ?? 'Me')
-        : ((msg._data as { notifyName?: string })?.notifyName ||
+        : (lidName(msg.author) ||
+           (msg._data as { notifyName?: string })?.notifyName ||
            (msg.author ? nameMap[msg.author] ?? null : null) ||
            (msg.author ? msg.author.split('@')[0] : 'Unknown') ||
            'Unknown'),
@@ -237,15 +252,13 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
         const lastRawClient = rawClientMsgs[rawClientMsgs.length - 1];
         const lastRawMsg = recent[recent.length - 1];
         const lastMsgIsFromMe = lastRawMsg?.fromMe === true;
-        // Colleagues often post from personal numbers (LIDs) that carry no
-        // notifyName; fall back to the (cached) contact lookup like
-        // enrichMessages does, or their routine broadcasts get treated as
-        // client messages and auto-routed to 待跟進 by the keyword pre-screen.
+        // Colleagues often post from LID addresses that carry no notifyName
+        // and are not in the address book; without LID_NAMES / the contact
+        // lookup their routine broadcasts get treated as client messages and
+        // auto-routed to 待跟進 by the keyword pre-screen.
         const lastRawSenderName = !lastRawMsg || lastMsgIsFromMe
           ? null
-          : ((lastRawMsg._data as { notifyName?: string })?.notifyName ||
-             (await resolveName(client, lastRawMsg.author)) ||
-             null);
+          : await displayName(client, lastRawMsg);
         const lastMsgIsAgent = !lastRawMsg || lastMsgIsFromMe || isColleague(lastRawSenderName);
         const lastMsgFromClient = !lastMsgIsAgent;
         const unresolvedKw = matchesKeyword(lastRawClient.body, UNRESOLVED_KEYWORDS);
@@ -257,10 +270,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
           console.log('  [' + elapsed + 's] Keyword hit "' + unresolvedKw + '" in "' + group.name + '" — skipping Claude');
 
           const body = lastRawClient.body ?? '';
-          const senderName =
-            (lastRawClient._data as { notifyName?: string })?.notifyName ||
-            (await resolveName(client, lastRawClient.author)) ||
-            (lastRawClient.author ? lastRawClient.author.split('@')[0] : 'Unknown');
+          const senderName = await displayName(client, lastRawClient);
 
           unresolved.push({
             groupName: group.name,
@@ -284,10 +294,7 @@ export async function scrapeGroups(client: Client, { onProgress }: ScrapeOptions
           console.log('  [' + elapsed + 's] Colleague resolved "' + group.name + '" ("' + colName + '": "' + resolvedKw + '") — skipping Claude');
 
           const body = lastRawClient.body ?? '';
-          const senderName =
-            (lastRawClient._data as { notifyName?: string })?.notifyName ||
-            (await resolveName(client, lastRawClient.author)) ||
-            (lastRawClient.author ? lastRawClient.author.split('@')[0] : 'Unknown');
+          const senderName = await displayName(client, lastRawClient);
 
           const msgBody = lastRawMsg.body ?? '';
           resolved.push({
