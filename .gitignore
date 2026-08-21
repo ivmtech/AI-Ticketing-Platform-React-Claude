@@ -48,3 +48,7 @@ service-err.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SOP mining raw data — holds unredacted client transcripts, never commit
+/data/*
+!/data/README.md
